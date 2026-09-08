@@ -24,8 +24,9 @@ export async function POST(request: Request) {
   }
 
   const verificationToken = randomUUID()
+  let user
   try {
-    const user = await prisma.user.create({
+    user = await prisma.user.create({
       data: {
         email: data.email.toLowerCase(),
         passwordHash: await bcrypt.hash(data.password, 12),
@@ -38,13 +39,20 @@ export async function POST(request: Request) {
         faceEmbedding: data.faceEmbedding,
       },
     })
-    await sendVerificationEmail(user)
-    return NextResponse.json({ message: "Registration successful. Check your email to verify your account." }, { status: 201 })
   } catch (error: unknown) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
     }
-    console.error(error)
-    return NextResponse.json({ error: "Unable to create account" }, { status: 500 })
+    console.error("Registration database error", error)
+    return NextResponse.json({ error: "Database unavailable. Check the MongoDB Atlas connection and Network Access settings." }, { status: 503 })
   }
+
+  try {
+    await sendVerificationEmail(user)
+  } catch (error) {
+    console.error("Verification email error", error)
+    return NextResponse.json({ error: "Account created, but the verification email could not be sent. Configure SMTP or try resending later." }, { status: 503 })
+  }
+
+  return NextResponse.json({ message: "Registration successful. Check your email to verify your account." }, { status: 201 })
 }
