@@ -32,7 +32,7 @@ CRON_SECRET=<cron-bearer-secret>
 
 Gmail requires an app password with SMTP enabled. SendGrid can be used with `smtp.sendgrid.net`, username `apikey`, and the SendGrid API key as `SMTP_PASS`. Never commit these values; configure them in Vercel Project Settings or an ignored local `.env.local`.
 
-The Phase 2 Vercel Cron job calls `/api/cron/auto-submit` every minute to submit expired exam sessions. Set `CRON_SECRET` in Vercel to protect that endpoint.
+The Phase 2 auto-submit endpoint is `/api/cron/auto-submit`. Vercel Hobby does not support per-minute cron schedules, so configure this endpoint with an external scheduler or upgrade the Vercel project to Pro and add a `* * * * *` Vercel Cron schedule. Set `CRON_SECRET` in Vercel and send it as a bearer token from the scheduler.
 
 ## Hosted MongoDB
 
