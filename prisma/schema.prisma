@@ -34,6 +34,7 @@ enum IncidentType {
   IDENTITY_MISMATCH
   BACKGROUND_APP
   UNSUPPORTED_BROWSER
+  CONNECTION_LOST
 }
 
 enum Severity {

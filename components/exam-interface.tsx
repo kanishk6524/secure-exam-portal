@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useExam } from "@/context/exam-context"
+import { useStudentRealtime } from "@/lib/socket-client"
 
 type Option = { id: string; text: string }
 type Question = { id: string; subject: { id: string; name: string }; text: string; options: Option[]; marks: number; negativeMarks: number }
@@ -16,11 +17,14 @@ export default function ExamInterface({ onFinishExam }: { onFinishExam: () => vo
   const [currentIndex, setCurrentIndex] = useState(0)
   const [timeLeft, setTimeLeft] = useState(0)
   const [error, setError] = useState("")
+  const [blocked, setBlocked] = useState(false)
   const submitting = useRef(false)
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const currentQuestion = questions[currentIndex]
   const subjects = useMemo(() => Array.from(new Map(questions.map((question) => [question.subject.id, question.subject])).values()), [questions])
+  const handleBlocked = useCallback(() => setBlocked(true), [])
+  useStudentRealtime(sessionId, handleBlocked)
 
   async function loadSession() {
     if (!exam?.id) return
@@ -82,7 +86,19 @@ export default function ExamInterface({ onFinishExam }: { onFinishExam: () => vo
     return () => clearInterval(interval)
   }, [sessionId])
 
+  useEffect(() => {
+    if (!sessionId) return
+    const reportTabSwitch = () => {
+      if (document.visibilityState === "hidden") {
+        void fetch(`/api/exams/session/${sessionId}/incident`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "TAB_SWITCH", severity: "MEDIUM", metadata: { visibilityState: document.visibilityState } }) })
+      }
+    }
+    document.addEventListener("visibilitychange", reportTabSwitch)
+    return () => document.removeEventListener("visibilitychange", reportTabSwitch)
+  }, [sessionId])
+
   function selectAnswer(questionId: string, selectedOption: string) {
+    if (blocked) return
     const answer = { questionId, selectedOption, descriptiveText: null }
     setAnswers((previous) => ({ ...previous, [questionId]: answer }))
     clearTimeout(saveTimers.current[questionId])
@@ -92,6 +108,7 @@ export default function ExamInterface({ onFinishExam }: { onFinishExam: () => vo
   }
 
   const formatTime = (seconds: number) => `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+  if (blocked) return <div className="flex min-h-screen items-center justify-center bg-gray-950 p-6"><div className="max-w-lg rounded-lg bg-white p-10 text-center shadow-xl"><h1 className="text-2xl font-bold text-red-700">Your session has been ended by the invigilator</h1><p className="mt-3 text-gray-600">This exam is no longer accepting answers.</p></div></div>
   if (error) return <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6"><div className="rounded-lg bg-white p-8 text-red-700 shadow">{error}</div></div>
   if (!currentQuestion) return <div className="flex min-h-screen items-center justify-center bg-gray-50">Loading exam...</div>
 
