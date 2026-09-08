@@ -1,10 +1,11 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, type ReactNode } from "react"
+import { signOut, useSession } from "next-auth/react"
 
 interface User {
   username: string
-  role: "admin" | "student"
+  role: "admin" | "student" | "college_admin"
 }
 
 interface AuthContextType {
@@ -16,15 +17,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-
-  const login = (userData: User) => {
-    setUser(userData)
-  }
-
-  const logout = () => {
-    setUser(null)
-  }
+  const { data: session } = useSession()
+  const user = session?.user
+    ? { username: session.user.email ?? session.user.name ?? "", role: session.user.role.toLowerCase() as User["role"] }
+    : null
+  const login = (_userData: User) => undefined
+  const logout = () => signOut({ callbackUrl: "/" })
 
   return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>
 }

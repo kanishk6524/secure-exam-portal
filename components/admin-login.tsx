@@ -1,182 +1,30 @@
 "use client"
 
-import type React from "react"
+import { useState, type FormEvent } from "react"
+import { signIn } from "next-auth/react"
+import RegisterForm from "@/components/auth/register-form"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { KeyRound } from "lucide-react"
 
-import { useState } from "react"
-import { useAuth } from "@/context/auth-context"
-import { Shield, KeyRound } from "lucide-react"
-
-interface AdminLoginProps {
-  onLoginSuccess: () => void
-}
-
-export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
-  const [username, setUsername] = useState("")
+export default function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const [showOTP, setShowOTP] = useState(false)
-  const [otp, setOtp] = useState("")
-  const { login } = useAuth()
+  const [registering, setRegistering] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
     setError("")
-
-    // In a real app, you would validate credentials against a backend
-    if (username === "admin" && password === "admin123") {
-      // Show OTP screen for MFA
-      setShowOTP(true)
-    } else {
-      setError("Invalid username or password")
+    const result = await signIn("credentials", { email, password, redirect: false })
+    if (result?.error) {
+      setError(result.code === "EMAIL_NOT_VERIFIED" ? "Please verify your email before signing in. Check your inbox for the verification link." : "Invalid email or password")
+      return
     }
+    onLoginSuccess()
   }
 
-  const handleOTPSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // In a real app, you would validate OTP against a backend
-    if (otp === "123456") {
-      login({ username, role: "admin" })
-      onLoginSuccess()
-    } else {
-      setError("Invalid OTP")
-    }
-  }
-
-  if (showOTP) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
-          <div className="text-center">
-            <div className="flex justify-center">
-              <Shield className="w-12 h-12 text-blue-600" />
-            </div>
-            <h2 className="mt-4 text-3xl font-extrabold text-gray-900">Two-Factor Authentication</h2>
-            <p className="mt-2 text-sm text-gray-600">Enter the 6-digit code sent to your registered device</p>
-          </div>
-
-          {error && <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md">{error}</div>}
-
-          <form className="mt-8 space-y-6" onSubmit={handleOTPSubmit}>
-            <div>
-              <label htmlFor="otp" className="sr-only">
-                OTP Code
-              </label>
-              <input
-                id="otp"
-                name="otp"
-                type="text"
-                maxLength={6}
-                required
-                className="relative block w-full px-3 py-2 text-center text-2xl tracking-widest text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10"
-                placeholder="• • • • • •"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ""))}
-              />
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md group hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Verify
-              </button>
-            </div>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setShowOTP(false)}
-                className="text-sm text-blue-600 hover:text-blue-500"
-              >
-                Back to login
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
-        <div className="text-center">
-          <div className="flex justify-center">
-            <KeyRound className="w-12 h-12 text-blue-600" />
-          </div>
-          <h2 className="mt-4 text-3xl font-extrabold text-gray-900">Admin Login</h2>
-          <p className="mt-2 text-sm text-gray-600">Secure access to the exam administration portal</p>
-        </div>
-
-        {error && <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md">{error}</div>}
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4 rounded-md shadow-sm">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="relative block w-full px-3 py-2 mt-1 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Admin username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="relative block w-full px-3 py-2 mt-1 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Admin password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="remember-me" className="block ml-2 text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                Forgot your password?
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md group hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Sign in
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
+  if (registering) return <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6"><RegisterForm role="ADMIN" onBack={() => setRegistering(false)} /></div>
+  return <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6"><Card className="w-full max-w-md"><CardHeader className="text-center"><KeyRound className="mx-auto h-10 w-10 text-blue-600" /><CardTitle>Admin Login</CardTitle></CardHeader><CardContent>{error && <p className="mb-4 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}</p>}<form className="space-y-4" onSubmit={handleSubmit}><Input required type="email" placeholder="Admin email" value={email} onChange={(event) => setEmail(event.target.value)} /><Input required type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} /><Button className="w-full">Sign in</Button><Button type="button" variant="link" className="w-full" onClick={() => setRegistering(true)}>Create admin account</Button></form></CardContent></Card></div>
 }
-
