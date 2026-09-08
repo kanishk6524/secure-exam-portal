@@ -1,0 +1,73 @@
+"use client"
+
+import { useState } from "react"
+import AdminLogin from "@/components/admin-login"
+import StudentLogin from "@/components/student-login"
+import ExamSelection from "@/components/exam-selection"
+import ExamInstructions from "@/components/exam-instructions"
+import ExamInterface from "@/components/exam-interface"
+import FinalSubmission from "@/components/final-submission"
+import AdminDashboard from "@/components/admin/admin-dashboard"
+import { AuthProvider } from "@/context/auth-context"
+import { ExamProvider } from "@/context/exam-context"
+
+export default function Home() {
+  const [currentPage, setCurrentPage] = useState("home")
+  const [userType, setUserType] = useState("")
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case "home":
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+            <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+              <h1 className="text-3xl font-bold text-center text-gray-800">Online Exam Portal</h1>
+              <div className="space-y-4">
+                <button
+                  onClick={() => {
+                    setUserType("admin")
+                    setCurrentPage("adminLogin")
+                  }}
+                  className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Admin Login
+                </button>
+                <button
+                  onClick={() => {
+                    setUserType("student")
+                    setCurrentPage("studentLogin")
+                  }}
+                  className="w-full px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Student Login
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      case "adminLogin":
+        return <AdminLogin onLoginSuccess={() => setCurrentPage("adminDashboard")} />
+      case "studentLogin":
+        return <StudentLogin onLoginSuccess={() => setCurrentPage("examSelection")} />
+      case "examSelection":
+        return <ExamSelection onSelectExam={() => setCurrentPage("examInstructions")} />
+      case "examInstructions":
+        return <ExamInstructions onStartExam={() => setCurrentPage("examInterface")} />
+      case "examInterface":
+        return <ExamInterface onFinishExam={() => setCurrentPage("finalSubmission")} />
+      case "finalSubmission":
+        return <FinalSubmission onGoHome={() => setCurrentPage("home")} />
+      case "adminDashboard":
+        return <AdminDashboard onLogout={() => setCurrentPage("home")} />
+      default:
+        return <div>Page not found</div>
+    }
+  }
+
+  return (
+    <AuthProvider>
+      <ExamProvider>{renderPage()}</ExamProvider>
+    </AuthProvider>
+  )
+}
+

@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+  COLLEGE_ADMIN
+}
+
+enum ExamStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+}
+
+enum IncidentType {
+  TAB_SWITCH
+  COPY_ATTEMPT
+  PASTE_ATTEMPT
+  CUT_ATTEMPT
+  FULLSCREEN_EXIT
+  NO_FACE
+  MULTIPLE_FACES
+  GAZE_AWAY
+  OBJECT_DETECTED
+  AUDIO_ANOMALY
+  IDENTITY_MISMATCH
+  BACKGROUND_APP
+  UNSUPPORTED_BROWSER
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id                String    @id @default(cuid()) @map("_id")
+  email             String    @unique
+  passwordHash      String
+  role              Role
+  fullName          String
+  collegeId         String?
+  emailVerified     Boolean   @default(false)
+  verificationToken String?
+  verificationExpiry DateTime?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  profilePhotoUrl   String?
+  faceEmbedding     Json?
+  createdAt         DateTime  @default(now())
+  examSessions      ExamSession[]
+  college           College?  @relation(fields: [collegeId], references: [id])
+}
+
+model College {
+  id    String  @id @default(cuid()) @map("_id")
+  name  String
+  code  String  @unique
+  users User[]
+  exams Exam[]
+}
+
+model Exam {
+  id           String        @id @default(cuid()) @map("_id")
+  title        String
+  description  String?
+  durationMins Int
+  startTime    DateTime
+  endTime      DateTime
+  status       ExamStatus    @default(DRAFT)
+  collegeId    String?
+  college      College?      @relation(fields: [collegeId], references: [id])
+  subjects     Subject[]
+  sessions     ExamSession[]
+  createdAt    DateTime       @default(now())
+}
+
+model Subject {
+  id        String     @id @default(cuid()) @map("_id")
+  name      String
+  examId    String
+  exam      Exam       @relation(fields: [examId], references: [id])
+  questions Question[]
+}
+
+model Question {
+  id            String  @id @default(cuid()) @map("_id")
+  subjectId     String
+  subject       Subject @relation(fields: [subjectId], references: [id])
+  text          String
+  options       Json
+  correctOption String
+  marks         Int     @default(1)
+  negativeMarks Int     @default(0)
+  difficulty    Int     @default(1)
+}
+
+model ExamSession {
+  id            String     @id @default(cuid()) @map("_id")
+  examId        String
+  exam          Exam       @relation(fields: [examId], references: [id])
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  questionOrder Json
+  startedAt     DateTime   @default(now())
+  serverEndsAt  DateTime
+  submittedAt   DateTime?
+  score         Float?
+  riskScore     Int        @default(0)
+  status        String     @default("IN_PROGRESS")
+  answers       Answer[]
+  incidents     Incident[]
+}
+
+model Answer {
+  id              String      @id @default(cuid()) @map("_id")
+  sessionId       String
+  session         ExamSession @relation(fields: [sessionId], references: [id])
+  questionId      String
+  selectedOption  String?
+  descriptiveText String?
+  isCorrect       Boolean?
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([sessionId, questionId])
+}
+
+model Incident {
+  id         String       @id @default(cuid()) @map("_id")
+  sessionId  String
+  session    ExamSession  @relation(fields: [sessionId], references: [id])
+  type       IncidentType
+  severity   Severity
+  confidence Float?
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid()) @map("_id")
+  sessionId String?
+  actorId   String?
+  action    String
+  prevHash  String?
+  hash      String
+  createdAt DateTime @default(now())
+}
