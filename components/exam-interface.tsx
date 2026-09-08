@@ -1,392 +1,99 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useExam } from "@/context/exam-context"
 
-interface ExamInterfaceProps {
-  onFinishExam: () => void
-}
+type Option = { id: string; text: string }
+type Question = { id: string; subject: { id: string; name: string }; text: string; options: Option[]; marks: number; negativeMarks: number }
+type Answer = { questionId: string; selectedOption: string | null; descriptiveText: string | null }
 
-interface Question {
-  id: number
-  subject: string
-  text: string
-  options: string[]
-  correctAnswer?: number // Only used for demo purposes
-}
-
-interface QuestionStatus {
-  attempted: boolean
-  skipped: boolean
-  answerId: number | null
-}
-
-export default function ExamInterface({ onFinishExam }: ExamInterfaceProps) {
+export default function ExamInterface({ onFinishExam }: { onFinishExam: () => void }) {
   const { exam, setExamResults } = useExam()
-  const [currentSubject, setCurrentSubject] = useState("Physics")
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(180 * 60) // 3 hours in seconds
-  const [questionStatus, setQuestionStatus] = useState<Record<number, QuestionStatus>>({})
-  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [sessionId, setSessionId] = useState("")
+  const [serverEndsAt, setServerEndsAt] = useState("")
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [answers, setAnswers] = useState<Record<string, Answer>>({})
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [error, setError] = useState("")
+  const submitting = useRef(false)
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  // Generate sample questions for demo
-  const generateQuestions = (): Question[] => {
-    const subjects = ["Physics", "Chemistry", "Mathematics"]
-    const questions: Question[] = []
+  const currentQuestion = questions[currentIndex]
+  const subjects = useMemo(() => Array.from(new Map(questions.map((question) => [question.subject.id, question.subject])).values()), [questions])
 
-    subjects.forEach((subject) => {
-      for (let i = 1; i <= 25; i++) {
-        questions.push({
-          id: questions.length + 1,
-          subject,
-          text: `${subject} Question ${i}: Lorem ipsum dolor sit amet, consectetur adipiscing elit?`,
-          options: [
-            "Option A: Lorem ipsum dolor sit amet",
-            "Option B: Consectetur adipiscing elit",
-            "Option C: Sed do eiusmod tempor incididunt",
-            "Option D: Ut labore et dolore magna aliqua",
-          ],
-          correctAnswer: Math.floor(Math.random() * 4), // Only for demo
-        })
-      }
-    })
-
-    return questions
+  async function loadSession() {
+    if (!exam?.id) return
+    const startResponse = await fetch(`/api/exams/${exam.id}/start`, { method: "POST" })
+    const start = await startResponse.json()
+    if (!startResponse.ok) throw new Error(start.error ?? "Unable to start exam")
+    setSessionId(start.sessionId)
+    setServerEndsAt(start.serverEndsAt)
+    const [questionResponse, answerResponse] = await Promise.all([fetch(`/api/exams/session/${start.sessionId}/questions`), fetch(`/api/exams/session/${start.sessionId}/answers`)]);
+    const questionData = await questionResponse.json()
+    const answerData = await answerResponse.json()
+    if (!questionResponse.ok) throw new Error(questionData.error ?? "Unable to load questions")
+    setQuestions(questionData.questions)
+    setServerEndsAt(questionData.serverEndsAt)
+    const restored: Record<string, Answer> = {}
+    for (const answer of answerData.answers ?? []) restored[answer.questionId] = answer
+    setAnswers(restored)
   }
 
-  const [questions] = useState<Question[]>(generateQuestions())
-
-  // Initialize question status
   useEffect(() => {
-    const initialStatus: Record<number, QuestionStatus> = {}
-    questions.forEach((q) => {
-      initialStatus[q.id] = {
-        attempted: false,
-        skipped: false,
-        answerId: null,
-      }
-    })
-    setQuestionStatus(initialStatus)
-  }, [questions])
+    loadSession().catch((loadError) => setError(loadError.message))
+  }, [exam?.id])
 
-  // Timer countdown
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          handleFinishExam()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
+    const sync = () => setTimeLeft(Math.max(0, Math.floor((new Date(serverEndsAt).getTime() - Date.now()) / 1000)))
+    if (!serverEndsAt) return
+    sync()
+    const timer = setInterval(sync, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [serverEndsAt])
 
-  const currentQuestions = questions.filter((q) => q.subject === currentSubject)
-  const currentQuestion = currentQuestions[currentQuestionIndex]
-
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
-
-  const handleAnswerSelect = (optionIndex: number) => {
-    setQuestionStatus((prev) => ({
-      ...prev,
-      [currentQuestion.id]: {
-        ...prev[currentQuestion.id],
-        attempted: true,
-        skipped: false,
-        answerId: optionIndex,
-      },
-    }))
-  }
-
-  const handleSkip = () => {
-    setQuestionStatus((prev) => ({
-      ...prev,
-      [currentQuestion.id]: {
-        ...prev[currentQuestion.id],
-        skipped: true,
-      },
-    }))
-
-    if (currentQuestionIndex < currentQuestions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-    } else if (currentSubject === "Physics") {
-      setCurrentSubject("Chemistry")
-      setCurrentQuestionIndex(0)
-    } else if (currentSubject === "Chemistry") {
-      setCurrentSubject("Mathematics")
-      setCurrentQuestionIndex(0)
+  async function submitExam() {
+    if (!sessionId || submitting.current) return
+    submitting.current = true
+    const response = await fetch(`/api/exams/session/${sessionId}/submit`, { method: "POST" })
+    const data = await response.json()
+    if (!response.ok) {
+      setError(data.error ?? "Unable to submit exam")
+      submitting.current = false
+      return
     }
-  }
-
-  const handleSaveAndNext = () => {
-    if (currentQuestionIndex < currentQuestions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-    } else if (currentSubject === "Physics") {
-      setCurrentSubject("Chemistry")
-      setCurrentQuestionIndex(0)
-    } else if (currentSubject === "Chemistry") {
-      setCurrentSubject("Mathematics")
-      setCurrentQuestionIndex(0)
-    }
-  }
-
-  const handleFinishExam = () => {
-    // Calculate results
-    const results = {
-      attempted: Object.values(questionStatus).filter((q) => q.attempted).length,
-      skipped: Object.values(questionStatus).filter((q) => q.skipped).length,
-      unattempted: Object.values(questionStatus).filter((q) => !q.attempted && !q.skipped).length,
-      totalQuestions: questions.length,
-      answers: questionStatus,
-    }
-
-    setExamResults(results)
+    const attempted = Object.values(answers).filter((answer) => answer.selectedOption || answer.descriptiveText).length
+    setExamResults({ attempted, skipped: questions.length - attempted, unattempted: questions.length - attempted, totalQuestions: questions.length, answers, score: data.score, status: data.status })
     onFinishExam()
   }
 
-  return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header with timer */}
-      <header className="flex items-center justify-between p-4 bg-white border-b shadow-sm">
-        <h1 className="text-xl font-bold">{exam?.name}</h1>
-        <div className="flex items-center space-x-4">
-          <div className="px-4 py-2 text-white bg-blue-600 rounded-md">
-            <span className="font-medium">Time Left: {formatTime(timeLeft)}</span>
-          </div>
-          <button
-            onClick={() => setShowConfirmation(true)}
-            className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700"
-          >
-            Finish Exam
-          </button>
-        </div>
-      </header>
+  useEffect(() => {
+    if (timeLeft !== 0 || !sessionId || submitting.current) return
+    submitExam()
+  }, [timeLeft, sessionId])
 
-      {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Question area */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          <div className="max-w-3xl mx-auto">
-            <div className="mb-6">
-              <div className="flex space-x-4 mb-4">
-                <button
-                  onClick={() => setCurrentSubject("Physics")}
-                  className={`px-4 py-2 rounded-md ${
-                    currentSubject === "Physics"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  Physics
-                </button>
-                <button
-                  onClick={() => setCurrentSubject("Chemistry")}
-                  className={`px-4 py-2 rounded-md ${
-                    currentSubject === "Chemistry"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  Chemistry
-                </button>
-                <button
-                  onClick={() => setCurrentSubject("Mathematics")}
-                  className={`px-4 py-2 rounded-md ${
-                    currentSubject === "Mathematics"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  Mathematics
-                </button>
-              </div>
+  useEffect(() => {
+    if (!sessionId) return
+    const sync = async () => {
+      const response = await fetch(`/api/exams/session/${sessionId}/questions`)
+      if (response.ok) setServerEndsAt((await response.json()).serverEndsAt)
+    }
+    const interval = setInterval(sync, 30000)
+    return () => clearInterval(interval)
+  }, [sessionId])
 
-              <h2 className="text-xl font-bold">
-                Question {currentQuestionIndex + 1} of {currentQuestions.length}
-              </h2>
-            </div>
+  function selectAnswer(questionId: string, selectedOption: string) {
+    const answer = { questionId, selectedOption, descriptiveText: null }
+    setAnswers((previous) => ({ ...previous, [questionId]: answer }))
+    clearTimeout(saveTimers.current[questionId])
+    saveTimers.current[questionId] = setTimeout(() => {
+      fetch(`/api/exams/session/${sessionId}/answer`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(answer) }).catch(() => setError("Answer could not be saved"))
+    }, 300)
+  }
 
-            <div className="p-6 bg-white rounded-lg shadow-md">
-              <p className="mb-6 text-lg">{currentQuestion?.text}</p>
+  const formatTime = (seconds: number) => `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+  if (error) return <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6"><div className="rounded-lg bg-white p-8 text-red-700 shadow">{error}</div></div>
+  if (!currentQuestion) return <div className="flex min-h-screen items-center justify-center bg-gray-50">Loading exam...</div>
 
-              <div className="space-y-3">
-                {currentQuestion?.options.map((option, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleAnswerSelect(index)}
-                    className={`p-3 border rounded-md cursor-pointer ${
-                      questionStatus[currentQuestion.id]?.answerId === index
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-300 hover:border-blue-300 hover:bg-blue-50"
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id={`option-${index}`}
-                        name="answer"
-                        checked={questionStatus[currentQuestion.id]?.answerId === index}
-                        onChange={() => handleAnswerSelect(index)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <label htmlFor={`option-${index}`} className="block ml-3 text-gray-700">
-                        {option}
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-between mt-8">
-                <button
-                  onClick={handleSkip}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                >
-                  Skip Question
-                </button>
-                <button
-                  onClick={handleSaveAndNext}
-                  className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700"
-                >
-                  Save & Next
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Question navigation sidebar */}
-        <div className="w-64 p-4 overflow-y-auto bg-white border-l">
-          <h3 className="mb-4 text-lg font-semibold">Question Navigator</h3>
-
-          <div className="mb-4">
-            <h4 className="mb-2 font-medium">Physics</h4>
-            <div className="grid grid-cols-5 gap-2">
-              {questions
-                .filter((q) => q.subject === "Physics")
-                .map((q, index) => (
-                  <button
-                    key={q.id}
-                    onClick={() => {
-                      setCurrentSubject("Physics")
-                      setCurrentQuestionIndex(index)
-                    }}
-                    className={`w-8 h-8 text-xs font-medium rounded-md ${
-                      questionStatus[q.id]?.attempted
-                        ? "bg-green-500 text-white"
-                        : questionStatus[q.id]?.skipped
-                          ? "bg-yellow-500 text-white"
-                          : "bg-red-500 text-white"
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <h4 className="mb-2 font-medium">Chemistry</h4>
-            <div className="grid grid-cols-5 gap-2">
-              {questions
-                .filter((q) => q.subject === "Chemistry")
-                .map((q, index) => (
-                  <button
-                    key={q.id}
-                    onClick={() => {
-                      setCurrentSubject("Chemistry")
-                      setCurrentQuestionIndex(index)
-                    }}
-                    className={`w-8 h-8 text-xs font-medium rounded-md ${
-                      questionStatus[q.id]?.attempted
-                        ? "bg-green-500 text-white"
-                        : questionStatus[q.id]?.skipped
-                          ? "bg-yellow-500 text-white"
-                          : "bg-red-500 text-white"
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <h4 className="mb-2 font-medium">Mathematics</h4>
-            <div className="grid grid-cols-5 gap-2">
-              {questions
-                .filter((q) => q.subject === "Mathematics")
-                .map((q, index) => (
-                  <button
-                    key={q.id}
-                    onClick={() => {
-                      setCurrentSubject("Mathematics")
-                      setCurrentQuestionIndex(index)
-                    }}
-                    className={`w-8 h-8 text-xs font-medium rounded-md ${
-                      questionStatus[q.id]?.attempted
-                        ? "bg-green-500 text-white"
-                        : questionStatus[q.id]?.skipped
-                          ? "bg-yellow-500 text-white"
-                          : "bg-red-500 text-white"
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-center mb-2">
-              <div className="w-4 h-4 mr-2 bg-green-500 rounded-sm"></div>
-              <span className="text-sm">Attempted</span>
-            </div>
-            <div className="flex items-center mb-2">
-              <div className="w-4 h-4 mr-2 bg-red-500 rounded-sm"></div>
-              <span className="text-sm">Not Attempted</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 mr-2 bg-yellow-500 rounded-sm"></div>
-              <span className="text-sm">Skipped</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirmation modal */}
-      {showConfirmation && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="p-6 bg-white rounded-lg shadow-lg">
-            <h3 className="mb-4 text-xl font-bold">Finish Exam?</h3>
-            <p className="mb-6">Are you sure you want to finish the exam? You won't be able to return to it.</p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleFinishExam}
-                className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700"
-              >
-                Finish Exam
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+  return <div className="flex h-screen flex-col bg-gray-50"><header className="flex items-center justify-between border-b bg-white p-4 shadow-sm"><h1 className="text-xl font-bold">{exam?.title}</h1><div className="flex items-center gap-4"><div className={`rounded-md px-4 py-2 font-medium text-white ${timeLeft < 300 ? "bg-red-600" : "bg-blue-600"}`}>Time Left: {formatTime(timeLeft)}</div><button onClick={submitExam} className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700">Finish Exam</button></div></header><div className="flex flex-1 overflow-hidden"><main className="flex-1 overflow-y-auto p-6"><div className="mx-auto max-w-3xl"><div className="mb-6 flex flex-wrap gap-2">{subjects.map((subject) => <button key={subject.id} onClick={() => setCurrentIndex(questions.findIndex((question) => question.subject.id === subject.id))} className="rounded-md bg-gray-200 px-4 py-2 text-gray-700 hover:bg-blue-100">{subject.name}</button>)}</div><p className="mb-4 text-sm text-gray-500">Question {currentIndex + 1} of {questions.length} · {currentQuestion.subject.name}</p><div className="rounded-lg bg-white p-6 shadow-md"><p className="mb-6 text-lg">{currentQuestion.text}</p><div className="space-y-3">{currentQuestion.options.map((option) => <label key={option.id} className={`flex cursor-pointer items-center rounded-md border p-3 ${answers[currentQuestion.id]?.selectedOption === option.id ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-300"}`}><input type="radio" name={currentQuestion.id} checked={answers[currentQuestion.id]?.selectedOption === option.id} onChange={() => selectAnswer(currentQuestion.id, option.id)} /><span className="ml-3">{option.text}</span></label>)}</div><div className="mt-8 flex justify-between"><button disabled={currentIndex === 0} onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))} className="rounded-md bg-gray-200 px-4 py-2 disabled:opacity-50">Previous</button><button disabled={currentIndex === questions.length - 1} onClick={() => setCurrentIndex((index) => Math.min(questions.length - 1, index + 1))} className="rounded-md bg-green-600 px-4 py-2 text-white disabled:opacity-50">Save & Next</button></div></div></div></main><aside className="w-64 overflow-y-auto border-l bg-white p-4"><h3 className="mb-4 text-lg font-semibold">Question Navigator</h3><div className="grid grid-cols-5 gap-2">{questions.map((question, index) => <button key={question.id} onClick={() => setCurrentIndex(index)} className={`h-8 rounded-md text-xs font-medium text-white ${answers[question.id]?.selectedOption ? "bg-green-500" : "bg-red-500"}`}>{index + 1}</button>)}</div></aside></div></div>
 }
-

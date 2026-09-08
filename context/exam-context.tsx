@@ -4,8 +4,9 @@ import { createContext, useContext, useState, type ReactNode } from "react"
 
 interface Exam {
   id: string
-  name: string
-  description: string
+  title: string
+  description?: string | null
+  durationMins?: number
 }
 
 interface ExamResults {
@@ -14,6 +15,8 @@ interface ExamResults {
   unattempted: number
   totalQuestions: number
   answers: Record<number, any>
+  score?: number | null
+  status?: string
 }
 
 interface ExamContextType {

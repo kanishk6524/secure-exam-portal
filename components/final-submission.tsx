@@ -15,7 +15,7 @@ export default function FinalSubmission({ onGoHome }: FinalSubmissionProps) {
         <h2 className="mb-6 text-2xl font-bold text-center">Exam Submission Summary</h2>
 
         <div className="mb-8">
-          <h3 className="mb-4 text-xl font-semibold">{exam?.name}</h3>
+          <h3 className="mb-4 text-xl font-semibold">{exam?.title}</h3>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-gray-100 rounded-md">
@@ -36,6 +36,10 @@ export default function FinalSubmission({ onGoHome }: FinalSubmissionProps) {
             <div className="p-4 bg-red-100 rounded-md">
               <p className="text-sm text-gray-500">Unattempted</p>
               <p className="text-2xl font-bold text-red-700">{examResults?.unattempted || 0}</p>
+            </div>
+            <div className="p-4 bg-blue-100 rounded-md">
+              <p className="text-sm text-gray-500">Score</p>
+              <p className="text-2xl font-bold text-blue-700">{examResults?.score ?? 0}</p>
             </div>
           </div>
         </div>

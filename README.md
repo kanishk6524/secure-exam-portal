@@ -27,9 +27,12 @@ SMTP_PORT=587
 SMTP_USER=<provider-user>
 SMTP_PASS=<provider-password-or-api-key>
 SMTP_FROM=Exam Platform <no-reply@your-domain.example>
+CRON_SECRET=<cron-bearer-secret>
 ```
 
 Gmail requires an app password with SMTP enabled. SendGrid can be used with `smtp.sendgrid.net`, username `apikey`, and the SendGrid API key as `SMTP_PASS`. Never commit these values; configure them in Vercel Project Settings or an ignored local `.env.local`.
+
+The Phase 2 Vercel Cron job calls `/api/cron/auto-submit` every minute to submit expired exam sessions. Set `CRON_SECRET` in Vercel to protect that endpoint.
 
 ## Hosted MongoDB
 

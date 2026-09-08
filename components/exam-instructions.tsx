@@ -34,7 +34,7 @@ export default function ExamInstructions({ onStartExam }: ExamInstructionsProps)
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-3xl p-8 bg-white rounded-lg shadow-md">
-        <h2 className="mb-6 text-2xl font-bold text-center">{exam?.name} - Exam Instructions</h2>
+        <h2 className="mb-6 text-2xl font-bold text-center">{exam?.title} - Exam Instructions</h2>
 
         <div className="mb-8 space-y-6">
           <div>

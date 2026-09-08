@@ -120,6 +120,8 @@ model ExamSession {
   status        String     @default("IN_PROGRESS")
   answers       Answer[]
   incidents     Incident[]
+
+  @@unique([examId, userId])
 }
 
 model Answer {
