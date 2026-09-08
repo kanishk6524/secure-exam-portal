@@ -6,6 +6,7 @@ import StudentLogin from "@/components/student-login"
 import ExamSelection from "@/components/exam-selection"
 import ExamInstructions from "@/components/exam-instructions"
 import ExamInterface from "@/components/exam-interface"
+import CameraCheck from "@/components/proctor/camera-check"
 import FinalSubmission from "@/components/final-submission"
 import AdminDashboard from "@/components/admin/admin-dashboard"
 import { AuthProvider } from "@/context/auth-context"
@@ -52,7 +53,9 @@ export default function Home() {
       case "examSelection":
         return <ExamSelection onSelectExam={() => setCurrentPage("examInstructions")} />
       case "examInstructions":
-        return <ExamInstructions onStartExam={() => setCurrentPage("examInterface")} />
+        return <ExamInstructions onStartExam={() => setCurrentPage("cameraCheck")} />
+      case "cameraCheck":
+        return <CameraCheck onReady={() => setCurrentPage("examInterface")} />
       case "examInterface":
         return <ExamInterface onFinishExam={() => setCurrentPage("finalSubmission")} />
       case "finalSubmission":

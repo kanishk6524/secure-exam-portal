@@ -12,6 +12,7 @@ const schema = z.object({
   fullName: z.string().trim().min(2),
   role: z.nativeEnum(Role),
   collegeId: z.string().optional(),
+  faceEmbedding: z.array(z.number()).length(128).optional(),
 })
 
 export async function POST(request: Request) {
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
         emailVerified: false,
         verificationToken,
         verificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        faceEmbedding: data.faceEmbedding,
       },
     })
     await sendVerificationEmail(user)

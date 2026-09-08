@@ -34,6 +34,10 @@ Gmail requires an app password with SMTP enabled. SendGrid can be used with `smt
 
 The Phase 2 auto-submit endpoint is `/api/cron/auto-submit`. Vercel Hobby does not support per-minute cron schedules, so configure this endpoint with an external scheduler or upgrade the Vercel project to Pro and add a `* * * * *` Vercel Cron schedule. Set `CRON_SECRET` in Vercel and send it as a bearer token from the scheduler.
 
+## Edge AI proctoring
+
+Phase 4 requests camera and microphone access only after the student accepts the exam instructions. Face landmarks, blink/head-turn liveness, sustained gaze, COCO-SSD object checks, face descriptor comparison, and VAD all run in the browser. Only incident type, confidence, and small metadata objects are sent to the server; raw video and audio are never uploaded. The audio check uses VAD speech segments plus a short-window overlap/alternation heuristic rather than full speaker diarization; this is a documented college-project simplification and future Phase 9 work. High/critical evidence modal support is present for incidents carrying a `snapshotUrl`; encrypted S3-compatible snapshot upload is intentionally deferred to Phase 7.
+
 ## Realtime deployment
 
 Phase 3 uses `server.ts` to attach Socket.io to a persistent Node HTTP server. Run it locally with `npm run dev` or in production with `npm run build && npm start`. This custom server is not compatible with Vercel's serverless runtime; deploy the realtime app to a persistent Node host such as Railway or Render. Configure `PORT`, `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, and the SMTP variables there. The admin monitoring screen receives incidents over Socket.io, while `/api/cron/auto-submit` remains available for an external scheduler.
