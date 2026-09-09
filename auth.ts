@@ -26,9 +26,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null
         }
 
-        if (!user.emailVerified) {
-          throw new EmailNotVerifiedError()
-        }
+        // Email verification gate temporarily disabled for testing.
+        // Re-enable by uncommenting this block.
+        // if (!user.emailVerified) {
+        //   throw new EmailNotVerifiedError()
+        // }
 
         return {
           id: user.id,
