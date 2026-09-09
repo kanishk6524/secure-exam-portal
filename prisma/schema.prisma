@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -45,7 +46,7 @@ enum Severity {
 }
 
 model User {
-  id                String    @id @default(cuid()) @map("_id")
+  id                String    @id @default(cuid())
   email             String    @unique
   passwordHash      String
   role              Role
@@ -64,7 +65,7 @@ model User {
 }
 
 model College {
-  id    String  @id @default(cuid()) @map("_id")
+  id    String  @id @default(cuid())
   name  String
   code  String  @unique
   users User[]
@@ -72,7 +73,7 @@ model College {
 }
 
 model Exam {
-  id           String        @id @default(cuid()) @map("_id")
+  id           String        @id @default(cuid())
   title        String
   description  String?
   durationMins Int
@@ -87,7 +88,7 @@ model Exam {
 }
 
 model Subject {
-  id        String     @id @default(cuid()) @map("_id")
+  id        String     @id @default(cuid())
   name      String
   examId    String
   exam      Exam       @relation(fields: [examId], references: [id])
@@ -95,7 +96,7 @@ model Subject {
 }
 
 model Question {
-  id            String  @id @default(cuid()) @map("_id")
+  id            String  @id @default(cuid())
   subjectId     String
   subject       Subject @relation(fields: [subjectId], references: [id])
   text          String
@@ -107,7 +108,7 @@ model Question {
 }
 
 model ExamSession {
-  id            String     @id @default(cuid()) @map("_id")
+  id            String     @id @default(cuid())
   examId        String
   exam          Exam       @relation(fields: [examId], references: [id])
   userId        String
@@ -126,7 +127,7 @@ model ExamSession {
 }
 
 model Answer {
-  id              String      @id @default(cuid()) @map("_id")
+  id              String      @id @default(cuid())
   sessionId       String
   session         ExamSession @relation(fields: [sessionId], references: [id])
   questionId      String
@@ -139,7 +140,7 @@ model Answer {
 }
 
 model Incident {
-  id         String       @id @default(cuid()) @map("_id")
+  id         String       @id @default(cuid())
   sessionId  String
   session    ExamSession  @relation(fields: [sessionId], references: [id])
   type       IncidentType
@@ -150,7 +151,7 @@ model Incident {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid()) @map("_id")
+  id        String   @id @default(cuid())
   sessionId String?
   actorId   String?
   action    String

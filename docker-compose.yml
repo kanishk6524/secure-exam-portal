@@ -1,13 +1,14 @@
 services:
   db:
-    image: mongo:7
+    image: postgres:16
     restart: unless-stopped
     environment:
-      MONGO_INITDB_DATABASE: exam_platform
+      POSTGRES_DB: exam_platform
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongo_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  mongo_data:
+  postgres_data:

@@ -7,30 +7,27 @@ git clone <repository-url>
 cd <repository-directory>
 npm install
 cp .env.example .env.local
-docker compose up -d
-npx prisma db push
+docker compose up -d   # optional: only if not using a hosted Postgres like Supabase
+npx prisma migrate dev
 npx prisma db seed
 npm run dev
 ```
 
-The local database uses MongoDB 7 with the connection in `.env.local`. Prisma MongoDB databases use `db push`; Prisma migration commands are for relational databases.
+The database is PostgreSQL, via Prisma. `DATABASE_URL` is a pooled connection (used by the app at runtime) and `DIRECT_URL` is a direct connection (used only by `prisma migrate`) — both are required. See "Hosted Postgres" below for where to get them from Supabase.
 
 ## Authentication email setup
 
-Local development uses Nodemailer's Ethereal test SMTP automatically when `SMTP_HOST` is not set. Registration and password-reset requests log a preview URL in the server console. For the live demo, add these Vercel environment variables:
+Email delivery uses [Resend](https://resend.com). Set `RESEND_API_KEY` (from https://resend.com/api-keys) in `.env.local` and in Vercel. The sandbox default `RESEND_FROM=Exam Platform <onboarding@resend.dev>` only delivers to the email address you signed up to Resend with — verify a domain at https://resend.com/domains and switch `RESEND_FROM` to an address on that domain so real students/admins can receive verification and password-reset emails.
 
 ```text
 AUTH_SECRET=<long-random-secret>
 NEXT_PUBLIC_APP_URL=https://secure-exam-portal-eta.vercel.app
-SMTP_HOST=<provider-host>
-SMTP_PORT=587
-SMTP_USER=<provider-user>
-SMTP_PASS=<provider-password-or-api-key>
-SMTP_FROM=Exam Platform <no-reply@your-domain.example>
+RESEND_API_KEY=<resend-api-key>
+RESEND_FROM=Exam Platform <no-reply@your-domain.example>
 CRON_SECRET=<cron-bearer-secret>
 ```
 
-Gmail requires an app password with SMTP enabled. SendGrid can be used with `smtp.sendgrid.net`, username `apikey`, and the SendGrid API key as `SMTP_PASS`. Never commit these values; configure them in Vercel Project Settings or an ignored local `.env.local`.
+Never commit these values; configure them in Vercel Project Settings or an ignored local `.env.local`.
 
 The Phase 2 auto-submit endpoint is `/api/cron/auto-submit`. Vercel Hobby does not support per-minute cron schedules, so configure this endpoint with an external scheduler or upgrade the Vercel project to Pro and add a `* * * * *` Vercel Cron schedule. Set `CRON_SECRET` in Vercel and send it as a bearer token from the scheduler.
 
@@ -42,6 +39,10 @@ Phase 4 requests camera and microphone access only after the student accepts the
 
 Phase 3 uses `server.ts` to attach Socket.io to a persistent Node HTTP server. Run it locally with `npm run dev` or in production with `npm run build && npm start`. This custom server is not compatible with Vercel's serverless runtime; deploy the realtime app to a persistent Node host such as Railway or Render. Configure `PORT`, `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, and the SMTP variables there. The admin monitoring screen receives incidents over Socket.io, while `/api/cron/auto-submit` remains available for an external scheduler.
 
-## Hosted MongoDB
+## Hosted Postgres (Supabase)
 
-MongoDB Atlas provides a free hosted cluster. Create a database, copy its connection string into `DATABASE_URL` in `.env.local`, and then run `npx prisma db push` and `npx prisma db seed`. When using Atlas, `docker compose up -d` is optional.
+[Supabase](https://supabase.com) provides a free hosted Postgres project. From the project's "Connect" dialog, copy:
+- the **Transaction pooler** connection string (port 6543) into `DATABASE_URL`, with `?pgbouncer=true` appended — this is what the app uses at runtime, including on Vercel's serverless functions.
+- the **Session pooler** connection string (port 5432) into `DIRECT_URL` — this is what `prisma migrate` uses. (New Supabase projects only expose an IPv6 direct-connection host, which most networks/CI can't reach; the session pooler is the IPv4-compatible equivalent and works fine for migrations.)
+
+Then run `npx prisma migrate dev` and `npx prisma db seed`. When using Supabase, `docker compose up -d` is not needed.

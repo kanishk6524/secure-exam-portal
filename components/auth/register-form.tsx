@@ -173,7 +173,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Input required placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
           <Input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-          {role === "STUDENT" && <Input required placeholder="College ID" value={form.collegeId} onChange={(event) => setForm({ ...form, collegeId: event.target.value })} />}
+          {role === "STUDENT" && <Input required placeholder="College code (ask your admin, e.g. DEMO-001)" value={form.collegeId} onChange={(event) => setForm({ ...form, collegeId: event.target.value })} />}
           <Input required type="password" minLength={8} placeholder="Password (8+ characters, including a number)" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
 
           <video ref={videoRef} muted playsInline autoPlay className={`${cameraOpen ? "" : "hidden"} aspect-video w-full rounded-md bg-gray-900 object-cover`} />
