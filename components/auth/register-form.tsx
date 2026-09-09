@@ -85,6 +85,12 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
     ;(async () => {
       try {
         const faceapi = await import("face-api.js")
+        // face-api.js bundles an old tfjs-core (1.7.0) whose WebGL backend
+        // frequently hangs mid-inference on modern browsers/GPUs. The CPU
+        // backend is slower per call but reliably completes for a single
+        // 224px frame, and this is what was causing capture to time out.
+        await faceapi.tf.setBackend("cpu")
+        await faceapi.tf.ready()
         await withTimeout(
           Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -129,6 +135,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
       setCaptureStatus("Selfie captured successfully")
       stopCamera()
     } catch (captureError) {
+      console.error("Face capture error", captureError)
       setCameraError(captureError instanceof Error ? captureError.message : "Unable to capture selfie")
     } finally {
       setCapturing(false)

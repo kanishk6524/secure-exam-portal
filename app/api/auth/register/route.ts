@@ -12,7 +12,7 @@ const schema = z.object({
   fullName: z.string().trim().min(2),
   role: z.nativeEnum(Role),
   collegeId: z.string().optional(),
-  faceEmbedding: z.array(z.number()).length(128).optional(),
+  faceEmbedding: z.array(z.number()).length(128).nullable().optional(),
 })
 
 export async function POST(request: Request) {
