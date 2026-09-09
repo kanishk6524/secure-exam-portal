@@ -2,6 +2,7 @@ import NextAuth, { CredentialsSignin } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { FirebaseAuthError, firebaseIsEmailVerified, firebaseSignInWithPassword } from "@/lib/firebase"
 
 class EmailNotVerifiedError extends CredentialsSignin {
   code = "EMAIL_NOT_VERIFIED"
@@ -21,12 +22,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(credentials?.email ?? "").trim().toLowerCase()
         const password = String(credentials?.password ?? "")
         const user = await prisma.user.findUnique({ where: { email } })
+        if (!user) return null
 
-        if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-          return null
+        let emailVerified = user.emailVerified
+
+        if (user.firebaseUid) {
+          let idToken: string
+          try {
+            idToken = (await firebaseSignInWithPassword(email, password)).idToken
+          } catch (error) {
+            if (error instanceof FirebaseAuthError) return null
+            throw error
+          }
+          emailVerified = await firebaseIsEmailVerified(idToken)
+          if (emailVerified !== user.emailVerified) {
+            await prisma.user.update({ where: { id: user.id }, data: { emailVerified } })
+          }
+        } else {
+          if (!user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+            return null
+          }
         }
 
-        if (!user.emailVerified) {
+        if (!emailVerified) {
           throw new EmailNotVerifiedError()
         }
 

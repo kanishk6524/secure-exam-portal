@@ -34,7 +34,7 @@ export default function StudentLogin({ onLoginSuccess, startInRegister = false }
   }
 
   async function resendVerification() {
-    const response = await fetch("/api/auth/resend-verification", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) })
+    const response = await fetch("/api/auth/resend-verification", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) })
     const data = await response.json()
     setMessage(data.message ?? data.error)
   }

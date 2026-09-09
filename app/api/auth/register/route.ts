@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import bcrypt from "bcryptjs"
-import { randomUUID } from "crypto"
 import { Prisma, Role } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { sendVerificationEmail } from "@/lib/mail"
+import { FirebaseAuthError, firebaseSendEmailVerification, firebaseSignUp } from "@/lib/firebase"
 
 const schema = z.object({
   email: z.string().email(),
@@ -19,6 +17,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 })
   const data = parsed.data
+  const email = data.email.toLowerCase()
   if (data.role === Role.STUDENT && !data.collegeId) {
     return NextResponse.json({ error: "College is required for student registration" }, { status: 400 })
   }
@@ -30,35 +29,40 @@ export async function POST(request: Request) {
     collegeId = college.id
   }
 
-  const verificationToken = randomUUID()
-  let user
+  if (await prisma.user.findUnique({ where: { email } })) {
+    return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
+  }
+
+  let firebaseUser
   try {
-    user = await prisma.user.create({
+    firebaseUser = await firebaseSignUp(email, data.password)
+  } catch (error) {
+    if (error instanceof FirebaseAuthError) return NextResponse.json({ error: error.message }, { status: 400 })
+    throw error
+  }
+
+  try {
+    await firebaseSendEmailVerification(firebaseUser.idToken)
+  } catch (error) {
+    console.error("Firebase verification email error", error)
+    return NextResponse.json({ error: "Account created, but the verification email could not be sent. Try resending later." }, { status: 503 })
+  }
+
+  try {
+    await prisma.user.create({
       data: {
-        email: data.email.toLowerCase(),
-        passwordHash: await bcrypt.hash(data.password, 12),
+        email,
+        firebaseUid: firebaseUser.localId,
         fullName: data.fullName,
         role: data.role,
         collegeId,
         emailVerified: false,
-        verificationToken,
-        verificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
         faceEmbedding: data.faceEmbedding ?? Prisma.JsonNull,
       },
     })
   } catch (error: unknown) {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
-      return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
-    }
     console.error("Registration database error", error)
-    return NextResponse.json({ error: "Database unavailable. Check the DATABASE_URL connection." }, { status: 503 })
-  }
-
-  try {
-    await sendVerificationEmail(user)
-  } catch (error) {
-    console.error("Verification email error", error)
-    return NextResponse.json({ error: "Account created, but the verification email could not be sent. Configure RESEND_API_KEY or try resending later." }, { status: 503 })
+    return NextResponse.json({ error: "Account created with Firebase, but saving your profile failed. Contact an admin." }, { status: 503 })
   }
 
   return NextResponse.json({ message: "Registration successful. Check your email to verify your account." }, { status: 201 })
