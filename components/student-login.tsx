@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
-export default function StudentLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+export default function StudentLogin({ onLoginSuccess, startInRegister = false }: { onLoginSuccess: () => void; startInRegister?: boolean }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
-  const [registering, setRegistering] = useState(false)
+  const [registering, setRegistering] = useState(startInRegister)
   const [forgotPassword, setForgotPassword] = useState(false)
 
   async function handleSubmit(event: FormEvent) {

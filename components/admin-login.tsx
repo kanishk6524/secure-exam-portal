@@ -8,11 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { KeyRound } from "lucide-react"
 
-export default function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+export default function AdminLogin({ onLoginSuccess, startInRegister = false }: { onLoginSuccess: () => void; startInRegister?: boolean }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const [registering, setRegistering] = useState(false)
+  const [registering, setRegistering] = useState(startInRegister)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()

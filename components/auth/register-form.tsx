@@ -23,6 +23,20 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   })
 }
 
+function describeCameraError(err: unknown): string {
+  const name = err instanceof DOMException ? err.name : ""
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return "Camera permission was denied. Allow camera access in your browser's site settings, then click Enable camera again."
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return "No camera was found on this device. You can skip the photo and add it later."
+  }
+  if (name === "NotReadableError" || name === "TrackStartError") {
+    return "The camera is already in use by another app or tab. Close it and try again, or skip the photo."
+  }
+  return err instanceof Error ? err.message : "Unable to access camera"
+}
+
 export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMIN"; onBack: () => void }) {
   const [form, setForm] = useState({ email: "", password: "", fullName: "", collegeId: "" })
   const [message, setMessage] = useState("")
@@ -30,10 +44,11 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   const [loading, setLoading] = useState(false)
   const [faceEmbedding, setFaceEmbedding] = useState<number[] | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
-  const [modelsReady, setModelsReady] = useState(false)
+  const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "failed">("loading")
   const [cameraError, setCameraError] = useState("")
   const [captureStatus, setCaptureStatus] = useState("")
   const [capturing, setCapturing] = useState(false)
+  const [openingCamera, setOpeningCamera] = useState(false)
   const [photoSkipped, setPhotoSkipped] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const faceapiRef = useRef<typeof import("face-api.js") | null>(null)
@@ -47,39 +62,43 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
 
   async function openCamera() {
     setCameraError("")
+    setOpeningCamera(true)
+    stopCamera()
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      if (!videoRef.current) throw new Error("Camera preview is unavailable")
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
+      if (!videoRef.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        throw new Error("Camera preview is unavailable")
+      }
       videoRef.current.srcObject = stream
       await videoRef.current.play()
       setCameraOpen(true)
     } catch (openError) {
-      setCameraError(openError instanceof Error ? openError.message : "Unable to access camera")
+      setCameraError(describeCameraError(openError))
+    } finally {
+      setOpeningCamera(false)
     }
   }
 
   useEffect(() => {
     let cancelled = false
-    void openCamera()
     ;(async () => {
       try {
-        setCaptureStatus("Loading face model...")
         const faceapi = await import("face-api.js")
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ])
+        await withTimeout(
+          Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          ]),
+          15000,
+          "Face recognition model failed to load in time.",
+        )
         faceapiRef.current = faceapi
-        if (!cancelled) {
-          setModelsReady(true)
-          setCaptureStatus("")
-        }
+        if (!cancelled) setModelStatus("ready")
       } catch (modelError) {
-        if (!cancelled) {
-          setCameraError(modelError instanceof Error ? modelError.message : "Unable to load face model")
-          setCaptureStatus("")
-        }
+        console.error("Face model load error", modelError)
+        if (!cancelled) setModelStatus("failed")
       }
     })()
     return () => {
@@ -139,7 +158,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle>{role === "STUDENT" ? "Create student account" : "Create admin account"}</CardTitle>
-        <CardDescription>Camera permission is requested automatically. Center your face and click Capture when ready.</CardDescription>
+        <CardDescription>Click "Enable camera" to capture a verification selfie, or skip it for now.</CardDescription>
       </CardHeader>
       <CardContent>
         {error && <p className="mb-4 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}</p>}
@@ -152,18 +171,22 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
 
           <video ref={videoRef} muted playsInline autoPlay className={`${cameraOpen ? "" : "hidden"} aspect-video w-full rounded-md bg-gray-900 object-cover`} />
 
+          {modelStatus === "loading" && <p className="text-sm text-gray-600">Loading face recognition model in the background...</p>}
+          {modelStatus === "failed" && (
+            <p className="text-sm text-amber-700">Face recognition model failed to load. You can still skip the photo and register.</p>
+          )}
           {captureStatus && <p className="text-sm text-gray-600">{captureStatus}</p>}
           {cameraError && <p className="text-sm text-red-700">{cameraError}</p>}
 
           {cameraOpen && (
-            <Button type="button" variant="outline" className="w-full" disabled={!modelsReady || capturing} onClick={() => void handleCapture()}>
-              {capturing ? "Capturing..." : modelsReady ? "Capture photo" : "Loading face model..."}
+            <Button type="button" variant="outline" className="w-full" disabled={modelStatus !== "ready" || capturing} onClick={() => void handleCapture()}>
+              {capturing ? "Capturing..." : modelStatus === "ready" ? "Capture photo" : "Loading face model..."}
             </Button>
           )}
 
           {!cameraOpen && !faceEmbedding && !photoSkipped && (
-            <Button type="button" variant="outline" className="w-full" onClick={() => void openCamera()}>
-              Open camera
+            <Button type="button" variant="outline" className="w-full" disabled={openingCamera} onClick={() => void openCamera()}>
+              {openingCamera ? "Requesting camera access..." : "Enable camera"}
             </Button>
           )}
 
