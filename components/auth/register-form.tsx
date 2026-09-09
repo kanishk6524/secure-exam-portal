@@ -42,6 +42,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   }
 
   useEffect(() => {
+    let cancelled = false
     void openCamera()
     ;(async () => {
       try {
@@ -53,14 +54,39 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ])
         faceapiRef.current = faceapi
-        setModelsReady(true)
-        setCaptureStatus("")
+        setCaptureStatus("Warming up camera...")
+        // The recognition model's first inference is slow (browser ML runtime
+        // compiles kernels on first use). Run one throwaway pass now so the
+        // real click-to-capture call later is fast.
+        for (let attempt = 0; attempt < 15 && !cancelled; attempt += 1) {
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            try {
+              const warmedUp = await faceapi
+                .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+                .withFaceLandmarks()
+                .withFaceDescriptor()
+              if (warmedUp) break
+            } catch {
+              // ignore warmup failures, real capture will surface any real error
+            }
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 200))
+        }
+        if (!cancelled) {
+          setModelsReady(true)
+          setCaptureStatus("")
+        }
       } catch (modelError) {
-        setCameraError(modelError instanceof Error ? modelError.message : "Unable to load face model")
-        setCaptureStatus("")
+        if (!cancelled) {
+          setCameraError(modelError instanceof Error ? modelError.message : "Unable to load face model")
+          setCaptureStatus("")
+        }
       }
     })()
-    return () => stopCamera()
+    return () => {
+      cancelled = true
+      stopCamera()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
