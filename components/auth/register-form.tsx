@@ -7,6 +7,22 @@ import { Input } from "@/components/ui/input"
 
 const MODEL_URL = "/models"
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMIN"; onBack: () => void }) {
   const [form, setForm] = useState({ email: "", password: "", fullName: "", collegeId: "" })
   const [message, setMessage] = useState("")
@@ -18,6 +34,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   const [cameraError, setCameraError] = useState("")
   const [captureStatus, setCaptureStatus] = useState("")
   const [capturing, setCapturing] = useState(false)
+  const [photoSkipped, setPhotoSkipped] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const faceapiRef = useRef<typeof import("face-api.js") | null>(null)
 
@@ -78,10 +95,16 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
     setCapturing(true)
     setCameraError("")
     try {
-      const detection = await faceapi
-        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
-        .withFaceLandmarks()
-        .withFaceDescriptor()
+      const runDetection = async () =>
+        faceapi
+          .detectSingleFace(videoRef.current!, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor()
+      const detection = await withTimeout(
+        runDetection(),
+        10000,
+        "Face capture timed out on this device/browser. You can retry, or skip the photo below and add it later.",
+      )
       if (!detection) throw new Error("No clear face detected. Center your face in the frame and try again.")
       setFaceEmbedding(Array.from(detection.descriptor))
       setCaptureStatus("Selfie captured successfully")
@@ -138,7 +161,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
             </Button>
           )}
 
-          {!cameraOpen && !faceEmbedding && (
+          {!cameraOpen && !faceEmbedding && !photoSkipped && (
             <Button type="button" variant="outline" className="w-full" onClick={() => void openCamera()}>
               Open camera
             </Button>
@@ -153,7 +176,24 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
             </div>
           )}
 
-          <Button className="w-full" disabled={loading || !faceEmbedding}>
+          {!faceEmbedding && !photoSkipped && (
+            <Button
+              type="button"
+              variant="link"
+              className="w-full text-sm text-gray-500"
+              onClick={() => {
+                stopCamera()
+                setCameraError("")
+                setPhotoSkipped(true)
+              }}
+            >
+              Skip photo for now
+            </Button>
+          )}
+
+          {photoSkipped && <p className="text-sm text-gray-600">Photo skipped. You can add it later from your profile.</p>}
+
+          <Button className="w-full" disabled={loading || (!faceEmbedding && !photoSkipped)}>
             {loading ? "Creating account..." : "Create account"}
           </Button>
           <Button type="button" variant="link" className="w-full" onClick={onBack}>
