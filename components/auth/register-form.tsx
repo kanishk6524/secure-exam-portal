@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
-const MODEL_URL = "https://justadudewhohacks.github.io/face-api.js/models"
+const MODEL_URL = "/models"
 
 export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMIN"; onBack: () => void }) {
   const [form, setForm] = useState({ email: "", password: "", fullName: "", collegeId: "" })
