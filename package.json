@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "tsx server.ts",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
