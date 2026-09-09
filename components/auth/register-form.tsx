@@ -48,7 +48,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
         setCaptureStatus("Loading face model...")
         const faceapi = await import("face-api.js")
         await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ])
@@ -70,7 +70,10 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
     setCapturing(true)
     setCameraError("")
     try {
-      const detection = await faceapi.detectSingleFace(videoRef.current).withFaceLandmarks().withFaceDescriptor()
+      const detection = await faceapi
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor()
       if (!detection) throw new Error("No clear face detected. Center your face in the frame and try again.")
       setFaceEmbedding(Array.from(detection.descriptor))
       setCaptureStatus("Selfie captured successfully")
