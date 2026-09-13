@@ -43,6 +43,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [faceEmbedding, setFaceEmbedding] = useState<number[] | null>(null)
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "failed">("loading")
   const [cameraError, setCameraError] = useState("")
@@ -116,23 +117,60 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
 
   async function handleCapture() {
     const faceapi = faceapiRef.current
-    if (!faceapi || !videoRef.current) return
+    const video = videoRef.current
+    if (!video) return
     setCapturing(true)
     setCameraError("")
+    setCaptureStatus("")
     try {
+      if (!video.videoWidth || !video.videoHeight) {
+        throw new Error("Camera is still starting. Wait a moment, then try again.")
+      }
+
+      // Save a real, reasonably small image as well as the descriptor used for
+      // identity verification. Previously this flow only saved the descriptor,
+      // so a successful capture did not result in a profile photo.
+      const canvas = document.createElement("canvas")
+      const scale = Math.min(1, 640 / video.videoWidth)
+      canvas.width = Math.round(video.videoWidth * scale)
+      canvas.height = Math.round(video.videoHeight * scale)
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("Unable to create the photo preview.")
+      context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const photo = canvas.toDataURL("image/jpeg", 0.82)
+      setProfilePhotoUrl(photo)
+      setPhotoSkipped(false)
+
+      // A profile photo must not depend on the optional face-recognition model.
+      // This model can be slow or unavailable on some browsers, while canvas
+      // capture works everywhere a camera preview is available.
+      if (!faceapi) {
+        setCaptureStatus("Photo captured and ready to save. Face verification is unavailable on this browser.")
+        stopCamera()
+        return
+      }
+
       const runDetection = async () =>
         faceapi
-          .detectSingleFace(videoRef.current!, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
           .withFaceLandmarks()
           .withFaceDescriptor()
-      const detection = await withTimeout(
-        runDetection(),
-        10000,
-        "Face capture timed out on this device/browser. You can retry, or skip the photo below and add it later.",
-      )
-      if (!detection) throw new Error("No clear face detected. Center your face in the frame and try again.")
-      setFaceEmbedding(Array.from(detection.descriptor))
-      setCaptureStatus("Selfie captured successfully")
+      try {
+        const detection = await withTimeout(
+          runDetection(),
+          10000,
+          "Face verification timed out.",
+        )
+        if (detection) {
+          setFaceEmbedding(Array.from(detection.descriptor))
+          setCaptureStatus("Photo captured and face verification saved. Create your account to finish saving it.")
+        } else {
+          setCaptureStatus("Photo captured and ready to save. No clear face was found for face verification.")
+        }
+      } catch (verificationError) {
+        console.error("Face verification error", verificationError)
+        setCaptureStatus("Photo captured and ready to save. Face verification could not be completed.")
+      }
       stopCamera()
     } catch (captureError) {
       console.error("Face capture error", captureError)
@@ -144,6 +182,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
 
   function handleRetake() {
     setFaceEmbedding(null)
+    setProfilePhotoUrl(null)
     setCaptureStatus("")
     setCameraError("")
     void openCamera()
@@ -154,11 +193,20 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
     setLoading(true)
     setMessage("")
     setError("")
-    const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, role, faceEmbedding }) })
-    const data = await response.json()
-    setLoading(false)
-    if (!response.ok) setError(data.error ?? "Registration failed")
-    else setMessage(data.message)
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, role, faceEmbedding, profilePhotoUrl }),
+      })
+      const data = await response.json()
+      if (!response.ok) setError(data.error ?? "Registration failed")
+      else setMessage(data.message)
+    } catch {
+      setError("Registration could not be completed. Check your connection and try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -168,8 +216,8 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
         <CardDescription>Click "Enable camera" to capture a verification selfie, or skip it for now.</CardDescription>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-4 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}</p>}
-        {message && <p className="mb-4 rounded-md bg-green-100 p-3 text-sm text-green-700">{message}</p>}
+        {error && <p role="alert" className="mb-4 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}</p>}
+        {message && <p role="alert" className="mb-4 rounded-md bg-green-100 p-3 text-sm text-green-700">{message}</p>}
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Input required placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
           <Input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
@@ -180,33 +228,34 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
 
           {modelStatus === "loading" && <p className="text-sm text-gray-600">Loading face recognition model in the background...</p>}
           {modelStatus === "failed" && (
-            <p className="text-sm text-amber-700">Face recognition model failed to load. You can still skip the photo and register.</p>
+            <p className="text-sm text-amber-700">Face recognition is unavailable, but you can still capture and save a profile photo.</p>
           )}
-          {captureStatus && <p className="text-sm text-gray-600">{captureStatus}</p>}
-          {cameraError && <p className="text-sm text-red-700">{cameraError}</p>}
+          {captureStatus && <p role="alert" className="rounded-md bg-green-50 p-3 text-sm text-green-800">{captureStatus}</p>}
+          {cameraError && <p role="alert" className="rounded-md bg-red-100 p-3 text-sm text-red-700">{cameraError}</p>}
 
           {cameraOpen && (
-            <Button type="button" variant="outline" className="w-full" disabled={modelStatus !== "ready" || capturing} onClick={() => void handleCapture()}>
-              {capturing ? "Capturing..." : modelStatus === "ready" ? "Capture photo" : "Loading face model..."}
+            <Button type="button" variant="outline" className="w-full" disabled={capturing} onClick={() => void handleCapture()}>
+              {capturing ? "Capturing..." : "Capture photo"}
             </Button>
           )}
 
-          {!cameraOpen && !faceEmbedding && !photoSkipped && (
+          {!cameraOpen && !profilePhotoUrl && !photoSkipped && (
             <Button type="button" variant="outline" className="w-full" disabled={openingCamera} onClick={() => void openCamera()}>
               {openingCamera ? "Requesting camera access..." : "Enable camera"}
             </Button>
           )}
 
-          {faceEmbedding && (
+          {profilePhotoUrl && (
             <div className="space-y-2">
-              <p className="text-sm text-green-700">Selfie captured successfully.</p>
+              {profilePhotoUrl && <img src={profilePhotoUrl} alt="Captured verification selfie" className="aspect-video w-full rounded-md object-cover" />}
+              <p className="text-sm text-green-700">Photo captured. It will be saved when you create the account.</p>
               <Button type="button" variant="outline" className="w-full" onClick={handleRetake}>
                 Retake photo
               </Button>
             </div>
           )}
 
-          {!faceEmbedding && !photoSkipped && (
+          {!profilePhotoUrl && !photoSkipped && (
             <Button
               type="button"
               variant="link"
@@ -223,7 +272,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
 
           {photoSkipped && <p className="text-sm text-gray-600">Photo skipped. You can add it later from your profile.</p>}
 
-          <Button className="w-full" disabled={loading || (!faceEmbedding && !photoSkipped)}>
+          <Button className="w-full" disabled={loading || (!profilePhotoUrl && !photoSkipped)}>
             {loading ? "Creating account..." : "Create account"}
           </Button>
           <Button type="button" variant="link" className="w-full" onClick={onBack}>

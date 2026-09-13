@@ -11,6 +11,12 @@ const schema = z.object({
   role: z.nativeEnum(Role),
   collegeId: z.string().optional(),
   faceEmbedding: z.array(z.number()).length(128).nullable().optional(),
+  profilePhotoUrl: z
+    .string()
+    .regex(/^data:image\/jpeg;base64,/, "Profile photo must be a JPEG image")
+    .max(750_000, "Profile photo is too large")
+    .nullable()
+    .optional(),
 })
 
 export async function POST(request: Request) {
@@ -58,6 +64,7 @@ export async function POST(request: Request) {
         collegeId,
         emailVerified: false,
         faceEmbedding: data.faceEmbedding ?? Prisma.JsonNull,
+        profilePhotoUrl: data.profilePhotoUrl ?? null,
       },
     })
   } catch (error: unknown) {
@@ -65,5 +72,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Account created with Firebase, but saving your profile failed. Contact an admin." }, { status: 503 })
   }
 
-  return NextResponse.json({ message: "Registration successful. Check your email to verify your account." }, { status: 201 })
+  return NextResponse.json(
+    { message: data.profilePhotoUrl ? "Registration successful. Your verification photo was saved; check your email to verify your account." : "Registration successful. Check your email to verify your account." },
+    { status: 201 },
+  )
 }
