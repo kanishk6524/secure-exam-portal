@@ -1,10 +1,17 @@
 import { PrismaClient, Role } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import { randomBytes } from "node:crypto"
 
 const prisma = new PrismaClient()
 
 async function main() {
-  const passwordHash = await bcrypt.hash("Passw0rd!", 12)
+  // The seed creates admin accounts, so it must never run against production by accident.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_SEED !== "1") {
+    throw new Error("Refusing to seed in production. Set ALLOW_PRODUCTION_SEED=1 only if you really mean it.")
+  }
+  const seedPassword = process.env.SEED_PASSWORD ?? `${randomBytes(9).toString("base64url")}1`
+  if (!process.env.SEED_PASSWORD) console.log(`Seed users password (set SEED_PASSWORD to choose your own): ${seedPassword}`)
+  const passwordHash = await bcrypt.hash(seedPassword, 12)
   const college = await prisma.college.upsert({
     where: { code: "DEMO-001" },
     update: {},
@@ -27,14 +34,14 @@ async function main() {
 
   const exam = await prisma.exam.upsert({
     where: { id: "demo-exam" },
-    update: {},
+    update: { startTime: new Date(Date.now() - 60 * 60 * 1000), endTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
     create: {
       id: "demo-exam",
       title: "Demo Assessment",
       description: "Seeded assessment for local development.",
       durationMins: 60,
-      startTime: new Date("2026-01-01T09:00:00.000Z"),
-      endTime: new Date("2026-01-01T10:00:00.000Z"),
+      startTime: new Date(Date.now() - 60 * 60 * 1000),
+      endTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       status: "SCHEDULED",
       collegeId: college.id,
     },

@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getAdminScope } from "@/lib/admin-auth"
+import { submitSession } from "@/lib/exam-engine"
 import { emitSessionBlocked } from "@/lib/realtime"
 
 export async function POST(request: Request, { params }: { params: Promise<{ sessionId: string }> }) {
-  const admin = await auth()
-  if (!admin?.user || (admin.user.role !== "ADMIN" && admin.user.role !== "COLLEGE_ADMIN")) return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+  const scope = await getAdminScope()
+  if (!scope) return NextResponse.json({ error: "Admin access required" }, { status: 403 })
   const { sessionId } = await params
-  const session = await prisma.examSession.update({ where: { id: sessionId }, data: { status: "BLOCKED", submittedAt: new Date() } })
+  const target = await prisma.examSession.findFirst({ where: { id: sessionId, ...(scope.collegeId ? { exam: { collegeId: scope.collegeId } } : {}) }, select: { status: true } })
+  if (!target) return NextResponse.json({ error: "Session not found" }, { status: 404 })
+  // Ending an exam also grades whatever the student had answered, so the result is not left empty.
+  if (target.status === "IN_PROGRESS") await submitSession(sessionId, "BLOCKED")
   emitSessionBlocked(sessionId)
+  const session = await prisma.examSession.findUnique({ where: { id: sessionId } })
   return NextResponse.json({ session })
 }

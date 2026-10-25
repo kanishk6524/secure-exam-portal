@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { signOut } from "next-auth/react"
 import { useExam } from "@/context/exam-context"
 
 interface FinalSubmissionProps {
@@ -7,7 +9,15 @@ interface FinalSubmissionProps {
 }
 
 export default function FinalSubmission({ onGoHome }: FinalSubmissionProps) {
-  const { exam, examResults } = useExam()
+  const { exam, examResults, clearExam } = useExam()
+  // Inside the Secure Exam Client the app stays locked until the exam is over; this screen unlocks it.
+  const [inClient, setInClient] = useState(false)
+  useEffect(() => {
+    const client = window.secureClient
+    if (!client?.allowExit) return
+    setInClient(true)
+    void client.allowExit()
+  }, [])
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -20,22 +30,22 @@ export default function FinalSubmission({ onGoHome }: FinalSubmissionProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-gray-100 rounded-md">
               <p className="text-sm text-gray-500">Total Questions</p>
-              <p className="text-2xl font-bold">{examResults?.totalQuestions || 75}</p>
+              <p className="text-2xl font-bold">{examResults?.totalQuestions ?? 0}</p>
             </div>
 
             <div className="p-4 bg-green-100 rounded-md">
               <p className="text-sm text-gray-500">Attempted</p>
-              <p className="text-2xl font-bold text-green-700">{examResults?.attempted || 0}</p>
+              <p className="text-2xl font-bold text-green-700">{examResults?.attempted ?? 0}</p>
             </div>
 
             <div className="p-4 bg-yellow-100 rounded-md">
               <p className="text-sm text-gray-500">Skipped</p>
-              <p className="text-2xl font-bold text-yellow-700">{examResults?.skipped || 0}</p>
+              <p className="text-2xl font-bold text-yellow-700">{examResults?.skipped ?? 0}</p>
             </div>
 
             <div className="p-4 bg-red-100 rounded-md">
               <p className="text-sm text-gray-500">Unattempted</p>
-              <p className="text-2xl font-bold text-red-700">{examResults?.unattempted || 0}</p>
+              <p className="text-2xl font-bold text-red-700">{examResults?.unattempted ?? 0}</p>
             </div>
             <div className="p-4 bg-blue-100 rounded-md">
               <p className="text-sm text-gray-500">Score</p>
@@ -51,9 +61,20 @@ export default function FinalSubmission({ onGoHome }: FinalSubmissionProps) {
         </div>
 
         <div className="text-center">
-          <button onClick={onGoHome} className="px-6 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700">
-            Return to Home
+          <button
+            onClick={async () => {
+              // Sign out so the next person on a shared computer does not inherit this session.
+              await signOut({ redirect: false })
+              clearExam()
+              onGoHome()
+            }}
+            className="px-6 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          >
+            Sign out and return home
           </button>
+          {inClient && (
+            <p className="mt-4 text-sm text-gray-500">You can now close the Secure Exam Client (Alt+F4 or Cmd+Q).</p>
+          )}
         </div>
       </div>
     </div>

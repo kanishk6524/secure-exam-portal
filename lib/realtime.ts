@@ -1,6 +1,8 @@
 import type { Incident } from "@prisma/client"
 
-export function emitIncident(incident: Incident & { examId: string }) {
+type LiveIncident = Omit<Incident, "evidence"> & { examId: string; hasEvidence?: boolean }
+
+export function emitIncident(incident: LiveIncident) {
   globalThis.realtimeIO?.to(`exam:${incident.examId}:admin`).emit("incident:new", incident)
 }
 

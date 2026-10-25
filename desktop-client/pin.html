@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+<title>Invigilator exit</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #fff; color: #111; }
+  input { width: 100%; box-sizing: border-box; padding: 8px; font-size: 16px; margin: 8px 0 12px; } button { padding: 8px 14px; margin-right: 8px; }
+  #error { color: #b91c1c; font-size: 13px; min-height: 18px; }
+</style>
+</head>
+<body>
+  <b>Invigilator PIN</b>
+  <input id="pin" type="password" autofocus />
+  <div id="error"></div>
+  <button id="ok">Exit client</button><button id="cancel">Cancel</button>
+<script>
+  const pin = document.getElementById("pin"), error = document.getElementById("error")
+  async function submit() { const ok = await window.secureClientLocal.submitPin(pin.value); if (!ok) { error.textContent = "Wrong PIN"; pin.value = "" } }
+  document.getElementById("ok").onclick = submit
+  document.getElementById("cancel").onclick = () => window.secureClientLocal.cancelPin()
+  pin.addEventListener("keydown", (e) => { if (e.key === "Enter") submit() })
+</script>
+</body>
+</html>

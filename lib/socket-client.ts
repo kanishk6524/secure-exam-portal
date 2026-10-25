@@ -10,7 +10,7 @@ export function useAdminIncidentFeed(examId: string | undefined) {
   const [connected, setConnected] = useState(false)
   useEffect(() => {
     if (!examId) return
-    const socket = io(socketUrl)
+    const socket = io(socketUrl, { reconnectionAttempts: 5 })
     const handleIncident = (incident: Record<string, unknown>) => setIncidents((previous) => [incident, ...previous])
     socket.on("connect", () => { setConnected(true); socket.emit("admin:join", examId) })
     socket.on("disconnect", () => setConnected(false))
@@ -23,7 +23,7 @@ export function useAdminIncidentFeed(examId: string | undefined) {
 export function useStudentRealtime(sessionId: string | undefined, onBlocked: () => void) {
   useEffect(() => {
     if (!sessionId) return
-    const socket: Socket = io(socketUrl)
+    const socket: Socket = io(socketUrl, { reconnectionAttempts: 5 })
     socket.on("connect", () => socket.emit("session:join", sessionId))
     socket.on("session:blocked", onBlocked)
     const heartbeat = setInterval(() => socket.emit("heartbeat", sessionId), 15_000)

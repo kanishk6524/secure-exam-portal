@@ -38,7 +38,7 @@ function describeCameraError(err: unknown): string {
 }
 
 export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMIN"; onBack: () => void }) {
-  const [form, setForm] = useState({ email: "", password: "", fullName: "", collegeId: "" })
+  const [form, setForm] = useState({ email: "", password: "", fullName: "", collegeId: "", adminCode: "" })
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -52,7 +52,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   const [openingCamera, setOpeningCamera] = useState(false)
   const [photoSkipped, setPhotoSkipped] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const faceapiRef = useRef<typeof import("face-api.js") | null>(null)
+  const faceapiRef = useRef<typeof import("@vladmandic/face-api") | null>(null)
 
   function stopCamera() {
     const stream = videoRef.current?.srcObject as MediaStream | null
@@ -85,13 +85,13 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
     let cancelled = false
     ;(async () => {
       try {
-        const faceapi = await import("face-api.js")
-        // face-api.js bundles an old tfjs-core (1.7.0) whose WebGL backend
-        // frequently hangs mid-inference on modern browsers/GPUs. The CPU
-        // backend is slower per call but reliably completes for a single
-        // 224px frame, and this is what was causing capture to time out.
-        await faceapi.tf.setBackend("cpu")
-        await faceapi.tf.ready()
+        const faceapi = await import("@vladmandic/face-api")
+        // @vladmandic/face-api is built on the same TensorFlow.js 4.x as the rest of the app. The old
+        // face-api.js bundled tfjs-core 1.7, which clashes with it ("forwardFunc is not a function") and made
+        // face capture hang. Prefer WebGL and fall back to CPU if the browser cannot provide it.
+        const tf = faceapi.tf as unknown as { setBackend: (name: string) => Promise<boolean>; ready: () => Promise<void> }
+        if (!(await tf.setBackend("webgl").catch(() => false))) await tf.setBackend("cpu")
+        await tf.ready()
         await withTimeout(
           Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -222,6 +222,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
           <Input required placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
           <Input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
           {role === "STUDENT" && <Input required placeholder="College code (ask your admin, e.g. DEMO-001)" value={form.collegeId} onChange={(event) => setForm({ ...form, collegeId: event.target.value })} />}
+          {role === "ADMIN" && <Input required type="password" placeholder="Admin registration code" value={form.adminCode} onChange={(event) => setForm({ ...form, adminCode: event.target.value })} />}
           <Input required type="password" minLength={8} placeholder="Password (8+ characters, including a number)" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
 
           <video ref={videoRef} muted playsInline autoPlay className={`${cameraOpen ? "" : "hidden"} aspect-video w-full rounded-md bg-gray-900 object-cover`} />

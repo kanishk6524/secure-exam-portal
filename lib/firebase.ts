@@ -1,5 +1,10 @@
 const IDENTITY_TOOLKIT_BASE = "https://identitytoolkit.googleapis.com/v1"
 
+/** False when FIREBASE_API_KEY is not set: the app then uses local password accounts (development only). */
+export function firebaseConfigured() {
+  return Boolean(process.env.FIREBASE_API_KEY)
+}
+
 function apiKey() {
   const key = process.env.FIREBASE_API_KEY
   if (!key) throw new Error("FIREBASE_API_KEY is not set. Add it to .env.local (Firebase console → Project settings → Web API Key).")

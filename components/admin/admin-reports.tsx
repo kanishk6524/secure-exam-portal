@@ -1,258 +1,79 @@
 "use client"
 
-import { useState } from "react"
-import { Download, FileText, BarChart3, PieChart, Calendar } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Download } from "lucide-react"
+
+type ExamSummary = { id: string; title: string; status: string; startTime: string; attempts: number; finished: number; average: number | null; highest: number | null; lowest: number | null }
+type ResultRow = { sessionId: string; student: string; email: string; status: string; score: number | null; totalMarks: number; percentage: number | null; incidents: number; riskScore: number; submittedAt: string | null }
+
+const fixed = (value: number | null) => (value === null ? "-" : value.toFixed(1))
 
 export default function AdminReports() {
-  const [selectedExam, setSelectedExam] = useState("All")
-  const [selectedDate, setSelectedDate] = useState("Last 30 days")
+  const [exams, setExams] = useState<ExamSummary[]>([])
+  const [selected, setSelected] = useState<ExamSummary | null>(null)
+  const [rows, setRows] = useState<ResultRow[]>([])
+  const [message, setMessage] = useState("")
 
-  // Sample report data
-  const reports = [
-    {
-      id: 1,
-      name: "JEE Mains Performance Report",
-      exam: "JEE Mains",
-      date: "2023-05-16",
-      type: "Performance",
-      format: "PDF",
-    },
-    {
-      id: 2,
-      name: "VITEEE Student Analysis",
-      exam: "VITEEE",
-      date: "2023-05-21",
-      type: "Analysis",
-      format: "Excel",
-    },
-    {
-      id: 3,
-      name: "BITSAT Question Difficulty Analysis",
-      exam: "BITSAT",
-      date: "2023-04-10",
-      type: "Question Analysis",
-      format: "PDF",
-    },
-    {
-      id: 4,
-      name: "MIT Entrance Exam Results",
-      exam: "MIT Entrance",
-      date: "2023-05-12",
-      type: "Results",
-      format: "Excel",
-    },
-    {
-      id: 5,
-      name: "JEE Mains Subject-wise Performance",
-      exam: "JEE Mains",
-      date: "2023-05-17",
-      type: "Subject Analysis",
-      format: "PDF",
-    },
-  ]
+  useEffect(() => {
+    fetch("/api/admin/reports")
+      .then(async (response) => ({ ok: response.ok, data: await response.json() }))
+      .then(({ ok, data }) => (ok ? setExams(data.exams) : setMessage(data.error ?? "Unable to load reports")))
+      .catch(() => setMessage("Unable to load reports"))
+  }, [])
 
-  const filteredReports = reports.filter((report) => selectedExam === "All" || report.exam === selectedExam)
+  async function open(exam: ExamSummary) {
+    setSelected(exam)
+    setRows([])
+    const response = await fetch(`/api/admin/reports?examId=${exam.id}`)
+    const data = await response.json()
+    if (response.ok) setRows(data.rows)
+    else setMessage(data.error ?? "Unable to load results")
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
-        <div className="flex space-x-2">
-          <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-            <BarChart3 className="inline w-4 h-4 mr-1" />
-            Generate Report
-          </button>
-        </div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-800">Reports</h1>
+        {selected && <button onClick={() => setSelected(null)} className="rounded-md border bg-white px-4 py-2 text-sm">All exams</button>}
       </div>
-
-      {/* Analytics Dashboard */}
-      <div className="p-6 mb-8 bg-white rounded-lg shadow">
-        <div className="flex flex-col mb-6 space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
-          <h2 className="text-lg font-semibold text-gray-700">Analytics Dashboard</h2>
-          <div className="flex space-x-2">
-            <select
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              value={selectedExam}
-              onChange={(e) => setSelectedExam(e.target.value)}
-            >
-              <option value="All">All Exams</option>
-              <option value="JEE Mains">JEE Mains</option>
-              <option value="VITEEE">VITEEE</option>
-              <option value="BITSAT">BITSAT</option>
-              <option value="MIT Entrance">MIT Entrance</option>
-              <option value="NEET">NEET</option>
-            </select>
-            <select
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            >
-              <option value="Last 7 days">Last 7 days</option>
-              <option value="Last 30 days">Last 30 days</option>
-              <option value="Last 3 months">Last 3 months</option>
-              <option value="Last 6 months">Last 6 months</option>
-              <option value="Last year">Last year</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-500 rounded-full">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Total Exams</h3>
-                <p className="text-2xl font-semibold text-gray-900">24</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 bg-green-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-500 rounded-full">
-                <PieChart className="w-6 h-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Average Score</h3>
-                <p className="text-2xl font-semibold text-gray-900">72.5%</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 bg-yellow-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="p-3 bg-yellow-500 rounded-full">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Pass Rate</h3>
-                <p className="text-2xl font-semibold text-gray-900">68.3%</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-500 rounded-full">
-                <BarChart3 className="w-6 h-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Total Students</h3>
-                <p className="text-2xl font-semibold text-gray-900">2,543</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <h3 className="mb-4 text-md font-medium text-gray-700">Performance by Subject</h3>
-            <div className="h-64 bg-gray-100 rounded-md flex items-center justify-center">
-              <p className="text-gray-500">Bar Chart Visualization</p>
-              {/* In a real app, you would use a charting library like Chart.js or Recharts */}
-            </div>
-          </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <h3 className="mb-4 text-md font-medium text-gray-700">Score Distribution</h3>
-            <div className="h-64 bg-gray-100 rounded-md flex items-center justify-center">
-              <p className="text-gray-500">Histogram Visualization</p>
-              {/* In a real app, you would use a charting library like Chart.js or Recharts */}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Generated Reports */}
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-gray-700">Generated Reports</h2>
-        <div className="overflow-hidden bg-white shadow sm:rounded-lg">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                  >
-                    Report Name
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                  >
-                    Exam
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                  >
-                    Date
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                  >
-                    Type
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                  >
-                    Format
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase"
-                  >
-                    Actions
-                  </th>
+      {message && <p className="mb-4 rounded-md bg-blue-50 p-3 text-sm text-blue-700">{message}</p>}
+      {!selected ? (
+        <div className="overflow-x-auto rounded-lg bg-white shadow">
+          <table className="min-w-full divide-y">
+            <thead><tr className="bg-gray-50 text-left text-xs uppercase text-gray-500"><th className="p-3">Exam</th><th className="p-3">Status</th><th className="p-3">Attempts</th><th className="p-3">Finished</th><th className="p-3">Average</th><th className="p-3">Highest</th><th className="p-3">Lowest</th><th className="p-3"></th></tr></thead>
+            <tbody className="divide-y text-sm">
+              {exams.map((exam) => (
+                <tr key={exam.id}>
+                  <td className="p-3 font-medium">{exam.title}</td><td className="p-3">{exam.status}</td><td className="p-3">{exam.attempts}</td><td className="p-3">{exam.finished}</td><td className="p-3">{fixed(exam.average)}</td><td className="p-3">{fixed(exam.highest)}</td><td className="p-3">{fixed(exam.lowest)}</td>
+                  <td className="p-3"><button onClick={() => void open(exam)} className="text-blue-600 hover:underline">View results</button></td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredReports.map((report) => (
-                  <tr key={report.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <FileText className="w-5 h-5 text-gray-400" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{report.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{report.exam}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{report.date}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{report.type}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 text-xs font-semibold leading-5 rounded-full ${
-                          report.format === "PDF" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {report.format}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Download className="w-5 h-5" />
-                      </button>
-                    </td>
+              ))}
+            </tbody>
+          </table>
+          {exams.length === 0 && <p className="p-8 text-center text-sm text-gray-500">No exams yet.</p>}
+        </div>
+      ) : (
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-700">{selected.title}</h2>
+            <a href={`/api/admin/reports?examId=${selected.id}&format=csv`} className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white"><Download className="mr-1 inline h-4 w-4" />Download CSV</a>
+          </div>
+          <div className="overflow-x-auto rounded-lg bg-white shadow">
+            <table className="min-w-full divide-y">
+              <thead><tr className="bg-gray-50 text-left text-xs uppercase text-gray-500"><th className="p-3">Student</th><th className="p-3">Status</th><th className="p-3">Score</th><th className="p-3">Out of</th><th className="p-3">%</th><th className="p-3">Incidents</th><th className="p-3">Risk</th><th className="p-3">Submitted</th></tr></thead>
+              <tbody className="divide-y text-sm">
+                {rows.map((row) => (
+                  <tr key={row.sessionId}>
+                    <td className="p-3"><div className="font-medium">{row.student}</div><div className="text-gray-500">{row.email}</div></td>
+                    <td className="p-3">{row.status}</td><td className="p-3">{row.score ?? "-"}</td><td className="p-3">{row.totalMarks}</td><td className="p-3">{row.percentage ?? "-"}</td><td className="p-3">{row.incidents}</td><td className="p-3">{row.riskScore}</td><td className="p-3">{row.submittedAt ? new Date(row.submittedAt).toLocaleString() : "-"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {rows.length === 0 && <p className="p-8 text-center text-sm text-gray-500">No attempts for this exam yet.</p>}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
-

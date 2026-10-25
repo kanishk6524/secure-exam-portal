@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { KeyRound } from "lucide-react"
 
-export default function AdminLogin({ onLoginSuccess, startInRegister = false }: { onLoginSuccess: () => void; startInRegister?: boolean }) {
+export default function AdminLogin({ onLoginSuccess, onHome, startInRegister = false }: { onLoginSuccess: () => void; onHome: () => void; startInRegister?: boolean }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -33,9 +33,10 @@ export default function AdminLogin({ onLoginSuccess, startInRegister = false }: 
     setMessage(data.message ?? data.error)
   }
 
-  if (registering) return <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6"><RegisterForm role="ADMIN" onBack={() => setRegistering(false)} /></div>
+  if (registering) return <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gray-50 p-6"><button type="button" onClick={onHome} className="self-start text-sm font-medium text-gray-600 hover:text-gray-900">&larr; Back to main portal</button><RegisterForm role="ADMIN" onBack={() => setRegistering(false)} /></div>
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gray-50 p-6">
+      <div className="w-full max-w-md"><button type="button" onClick={onHome} className="self-start text-sm font-medium text-gray-600 hover:text-gray-900">&larr; Back to main portal</button></div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <KeyRound className="mx-auto h-10 w-10 text-blue-600" />

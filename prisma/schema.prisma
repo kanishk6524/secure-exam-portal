@@ -36,6 +36,17 @@ enum IncidentType {
   BACKGROUND_APP
   UNSUPPORTED_BROWSER
   CONNECTION_LOST
+  CAMERA_LOST
+  PROCTOR_UNAVAILABLE
+  MULTIPLE_MONITORS
+  VIRTUAL_CAMERA
+  CLIENT_INTEGRITY
+}
+
+enum ReviewStatus {
+  PENDING
+  CONFIRMED
+  DISMISSED
 }
 
 enum Severity {
@@ -121,6 +132,10 @@ model ExamSession {
   score         Float?
   riskScore     Int        @default(0)
   status        String     @default("IN_PROGRESS")
+  verdict       String?
+  reviewNote    String?
+  reviewedById  String?
+  reviewedAt    DateTime?
   answers       Answer[]
   incidents     Incident[]
 
@@ -135,6 +150,8 @@ model Answer {
   selectedOption  String?
   descriptiveText String?
   isCorrect       Boolean?
+  visited         Boolean     @default(true)
+  markedForReview Boolean     @default(false)
   updatedAt       DateTime    @updatedAt
 
   @@unique([sessionId, questionId])
@@ -148,7 +165,14 @@ model Incident {
   severity   Severity
   confidence Float?
   metadata   Json?
+  evidence   String?      @db.Text
+  reviewStatus ReviewStatus @default(PENDING)
+  reviewNote String?
+  reviewedById String?
+  reviewedAt DateTime?
   createdAt  DateTime     @default(now())
+
+  @@index([sessionId, createdAt])
 }
 
 model AuditLog {
