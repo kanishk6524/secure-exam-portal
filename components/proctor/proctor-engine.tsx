@@ -174,7 +174,7 @@ function captureSnapshot(video: HTMLVideoElement | null) {
 
 async function verifyIdentity(video: HTMLVideoElement, expected: number[], emit: (type: string, severity: string, confidence?: number, metadata?: Record<string, unknown>) => Promise<void>, strikes: { current: number }) {
   try {
-    const faceapi = await import("@vladmandic/face-api")
+    const faceapi = await import("@vladmandic/face-api/dist/face-api.esm.js")
     if (!faceapi.nets.tinyFaceDetector.isLoaded) await Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri(faceApiModels), faceapi.nets.faceLandmark68Net.loadFromUri(faceApiModels), faceapi.nets.faceRecognitionNet.loadFromUri(faceApiModels)])
     const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 })).withFaceLandmarks().withFaceDescriptor()
     if (!detection) return

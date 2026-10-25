@@ -52,7 +52,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   const [openingCamera, setOpeningCamera] = useState(false)
   const [photoSkipped, setPhotoSkipped] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const faceapiRef = useRef<typeof import("@vladmandic/face-api") | null>(null)
+  const faceapiRef = useRef<typeof import("@vladmandic/face-api/dist/face-api.esm.js") | null>(null)
 
   function stopCamera() {
     const stream = videoRef.current?.srcObject as MediaStream | null
@@ -85,8 +85,9 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
     let cancelled = false
     ;(async () => {
       try {
-        const faceapi = await import("@vladmandic/face-api")
-        // @vladmandic/face-api is built on the same TensorFlow.js 4.x as the rest of the app. The old
+        const faceapi = await import("@vladmandic/face-api/dist/face-api.esm.js")
+        // Import the browser (ESM) build explicitly: the package's default entry is its Node build, which needs
+        // @tensorflow/tfjs-node and breaks the production build. @vladmandic/face-api is built on the same TensorFlow.js 4.x as the rest of the app. The old
         // face-api.js bundled tfjs-core 1.7, which clashes with it ("forwardFunc is not a function") and made
         // face capture hang. Prefer WebGL and fall back to CPU if the browser cannot provide it.
         const tf = faceapi.tf as unknown as { setBackend: (name: string) => Promise<boolean>; ready: () => Promise<void> }
