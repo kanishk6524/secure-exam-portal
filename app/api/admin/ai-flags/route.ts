@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAdminScope } from "@/lib/admin-auth"
 import { assessIntegrity } from "@/lib/integrity-model"
+import { sideCameraStatus } from "@/lib/side-camera"
 
 const BUCKETS = 12
 
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     where: { examId },
     orderBy: { startedAt: "desc" },
     select: {
-      id: true, status: true, startedAt: true, submittedAt: true, serverEndsAt: true, score: true, riskScore: true, verdict: true, questionOrder: true,
+      id: true, userId: true, status: true, startedAt: true, submittedAt: true, serverEndsAt: true, score: true, riskScore: true, verdict: true, questionOrder: true,
       user: { select: { fullName: true, email: true } },
       answers: { select: { updatedAt: true, isCorrect: true, selectedOption: true, descriptiveText: true } },
       incidents: { select: { type: true, severity: true, createdAt: true, metadata: true }, orderBy: { createdAt: "asc" } },
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
         case "AUDIO_ANOMALY": counts.sound += 1; break
         case "SURROUNDING_MOVEMENT": counts.movement += 1; break
         case "TAB_SWITCH": case "FULLSCREEN_EXIT": case "BACKGROUND_APP": counts.tabs += 1; break
-        case "NO_FACE": case "CAMERA_LOST": case "VIRTUAL_CAMERA": counts.camera += 1; break
+        case "NO_FACE": case "CAMERA_LOST": case "VIRTUAL_CAMERA": case "SIDE_CAMERA_LOST": counts.camera += 1; break
       }
       const offset = incident.createdAt.getTime() - session.startedAt.getTime()
       timeline[Math.min(BUCKETS - 1, Math.max(0, Math.floor((offset / windowMs) * BUCKETS)))] += 1
@@ -66,6 +67,7 @@ export async function GET(request: Request) {
       totalQuestions: total,
       riskScore: session.riskScore,
       verdict: session.verdict,
+      sideCamera: sideCameraStatus(session.userId, examId),
       counts,
       timeline,
       ml: { probability: ml.probability, level: ml.level },

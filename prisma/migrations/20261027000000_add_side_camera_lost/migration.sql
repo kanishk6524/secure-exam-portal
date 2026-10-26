@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "IncidentType" ADD VALUE IF NOT EXISTS 'SIDE_CAMERA_LOST';

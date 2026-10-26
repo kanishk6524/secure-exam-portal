@@ -42,6 +42,7 @@ enum IncidentType {
   VIRTUAL_CAMERA
   CLIENT_INTEGRITY
   SURROUNDING_MOVEMENT
+  SIDE_CAMERA_LOST
 }
 
 enum ReviewStatus {

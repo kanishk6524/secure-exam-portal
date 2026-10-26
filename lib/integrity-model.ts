@@ -30,7 +30,7 @@ const GROUPS: Record<Exclude<FeatureName, "burst" | "fastCorrect">, string[]> = 
   face: ["NO_FACE", "MULTIPLE_FACES", "SURROUNDING_MOVEMENT"],
   object: ["OBJECT_DETECTED"],
   identity: ["IDENTITY_MISMATCH"],
-  tamper: ["VIRTUAL_CAMERA", "CLIENT_INTEGRITY", "MULTIPLE_MONITORS", "CAMERA_LOST"],
+  tamper: ["VIRTUAL_CAMERA", "CLIENT_INTEGRITY", "MULTIPLE_MONITORS", "CAMERA_LOST", "SIDE_CAMERA_LOST"],
   audio: ["AUDIO_ANOMALY"],
 }
 const FAST_ANSWER_MS = 8000

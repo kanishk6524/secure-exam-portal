@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 type Counts = { eye: number; head: number; people: number; identity: number; object: number; sound: number; movement: number; tabs: number; camera: number }
-type Row = { sessionId: string; student: string; email: string; status: string; startedAt: string; submittedAt: string | null; score: number | null; attempted: number; totalQuestions: number; riskScore: number; verdict: string | null; counts: Counts; timeline: number[]; ml: { probability: number; level: "LOW" | "ELEVATED" | "HIGH" } }
+type Row = { sessionId: string; student: string; email: string; status: string; startedAt: string; submittedAt: string | null; score: number | null; attempted: number; totalQuestions: number; riskScore: number; verdict: string | null; sideCamera?: { everConnected: boolean; connected: boolean; ageSeconds: number | null }; counts: Counts; timeline: number[]; ml: { probability: number; level: "LOW" | "ELEVATED" | "HIGH" } }
 type Exam = { id: string; title: string; startTime?: string }
 
 const COLUMNS: Array<{ key: keyof Counts; label: string; defaultLimit: number }> = [
@@ -15,6 +15,7 @@ const COLUMNS: Array<{ key: keyof Counts; label: string; defaultLimit: number }>
   { key: "sound", label: "Sound", defaultLimit: 3 },
   { key: "movement", label: "Surrounding movement", defaultLimit: 3 },
   { key: "tabs", label: "Tab / window", defaultLimit: 3 },
+  { key: "camera", label: "Camera lost", defaultLimit: 2 },
 ]
 const STORAGE_KEY = "aiFlagThresholds"
 
@@ -24,6 +25,7 @@ export default function AdminAiFlags() {
   const [rows, setRows] = useState<Row[]>([])
   const [message, setMessage] = useState("")
   const [live, setLive] = useState(true)
+  const [sideView, setSideView] = useState<{ row: Row; image: string | null; connected: boolean } | null>(null)
   const [limits, setLimits] = useState<Record<string, number>>(() => Object.fromEntries(COLUMNS.map((column) => [column.key, column.defaultLimit])))
 
   useEffect(() => {
@@ -63,6 +65,21 @@ export default function AdminAiFlags() {
     if (!response.ok) return setMessage("Unable to save the decision")
     setRows((previous) => previous.map((item) => (item.sessionId === row.sessionId ? { ...item, verdict } : item)))
   }
+
+  // Live side-camera picture of one candidate (refreshes every 3 s while the window is open).
+  useEffect(() => {
+    if (!sideView) return
+    const sessionId = sideView.row.sessionId
+    let cancelled = false
+    const refresh = async () => {
+      const response = await fetch(`/api/admin/sessions/${sessionId}/side-camera`).catch(() => null)
+      const data = await response?.json().catch(() => null)
+      if (!cancelled && data) setSideView((previous) => (previous && previous.row.sessionId === sessionId ? { ...previous, image: data.image, connected: Boolean(data.connected) } : previous))
+    }
+    void refresh()
+    const timer = window.setInterval(refresh, 3000)
+    return () => { cancelled = true; window.clearInterval(timer) }
+  }, [sideView?.row.sessionId])
 
   const submitted = rows.filter((row) => row.status !== "IN_PROGRESS").length
   const flaggedNow = rows.filter(isFlagged).length
@@ -115,11 +132,11 @@ export default function AdminAiFlags() {
             <tr className="border-b bg-gray-50 text-xs uppercase text-gray-500">
               <th className="p-2">Candidate</th><th className="p-2">Status</th><th className="p-2">Attempted</th><th className="p-2">Submitted at</th><th className="p-2">Score</th>
               {COLUMNS.map((column) => <th key={column.key} className="p-2 text-center">{column.label}</th>)}
-              <th className="p-2">ML</th><th className="p-2">Pattern over time</th><th className="p-2">Decision</th>
+              <th className="p-2">Side cam</th><th className="p-2">ML</th><th className="p-2">Pattern over time</th><th className="p-2">Decision</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={16} className="p-6 text-center text-gray-500">No candidate has started this exam yet.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={18} className="p-6 text-center text-gray-500">No candidate has started this exam yet.</td></tr>}
             {rows.map((row) => {
               const over = exceeded(row)
               const peak = Math.max(1, ...row.timeline)
@@ -131,6 +148,7 @@ export default function AdminAiFlags() {
                   <td className="p-2 text-xs">{row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString() : "-"}</td>
                   <td className="p-2">{row.score ?? "-"}</td>
                   {COLUMNS.map((column) => <td key={column.key} className={`p-2 text-center ${row.counts[column.key] >= limits[column.key] ? "bg-red-100 font-bold text-red-700" : row.counts[column.key] ? "text-orange-600" : "text-gray-400"}`}>{row.counts[column.key]}</td>)}
+                  <td className="p-2"><button onClick={() => setSideView({ row, image: null, connected: false })} className={`rounded border px-2 py-1 text-xs ${row.sideCamera?.connected ? "border-green-500 text-green-700" : row.sideCamera?.everConnected ? "border-red-400 text-red-700" : "text-gray-500"}`}>{row.sideCamera?.connected ? "Live" : row.sideCamera?.everConnected ? "Lost" : "None"}</button></td>
                   <td className="p-2"><span className={`rounded px-2 py-0.5 text-xs font-semibold ${row.ml.level === "HIGH" ? "bg-red-600 text-white" : row.ml.level === "ELEVATED" ? "bg-orange-400 text-white" : "bg-green-100 text-green-800"}`}>{Math.round(row.ml.probability * 100)}%</span></td>
                   <td className="p-2"><div className="flex h-8 items-end gap-0.5">{row.timeline.map((value, index) => <span key={index} className={`w-1.5 rounded-t ${value ? "bg-red-500" : "bg-gray-200"}`} style={{ height: `${value ? 6 + (value / peak) * 26 : 3}px` }} />)}</div></td>
                   <td className="p-2">
@@ -146,6 +164,15 @@ export default function AdminAiFlags() {
           </tbody>
         </table>
       </div>
+      {sideView && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSideView(null)}>
+          <div className="w-full max-w-md rounded-lg bg-white p-4" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between"><h3 className="font-semibold">Side camera: {sideView.row.student}</h3><button onClick={() => setSideView(null)} className="text-sm text-gray-500">Close</button></div>
+            {sideView.image ? <img src={sideView.image} alt="Live side camera" className="mt-3 w-full rounded border" /> : <p className="mt-3 rounded bg-gray-100 p-6 text-center text-sm text-gray-500">No side camera picture yet. The candidate has not paired a phone.</p>}
+            <p className={`mt-2 text-xs ${sideView.connected ? "text-green-700" : "text-red-700"}`}>{sideView.connected ? "Live (updates every 3 seconds)" : "Not sending pictures right now"}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

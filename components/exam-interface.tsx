@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context"
 import { useStudentRealtime } from "@/lib/socket-client"
 import { useExamLockdown } from "@/hooks/use-exam-lockdown"
 import dynamic from "next/dynamic"
+import PhonePairing from "@/components/proctor/phone-pairing"
 import ExamWatermark from "@/components/exam-watermark"
 
 type Option = { id: string; text: string }
@@ -67,6 +68,10 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   const [submitError, setSubmitError] = useState("")
   const [submitRetry, setSubmitRetry] = useState(0)
   const [cameraRetry, setCameraRetry] = useState(0)
+  // Side camera (candidate's phone): pairing state before the exam, and a watchdog while it runs.
+  const [phone, setPhone] = useState({ connected: false, required: false })
+  const handlePhoneStatus = useCallback((state: { connected: boolean; required: boolean }) => setPhone((previous) => (previous.connected === state.connected && previous.required === state.required ? previous : state)), [])
+  const lastSideLostReport = useRef(0)
   const submitting = useRef(false)
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve())
   // Always call the latest closures from long-lived callbacks (intervals, queued saves).
@@ -163,6 +168,19 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
     updateAnswer(question.id, {})
     persist(question.id, {})
   }, [currentIndex, questions, sessionId])
+
+  // If a connected side camera stops sending pictures during the exam, tell the invigilator (at most once a minute).
+  useEffect(() => {
+    if (!started || !sessionId || !exam?.id) return
+    const examId = exam.id
+    const timer = window.setInterval(async () => {
+      const status = await fetch(`/api/exams/${examId}/phone/status`).then((response) => response.json()).catch(() => null)
+      if (!status?.everConnected || status.connected || Date.now() - lastSideLostReport.current < 60_000) return
+      lastSideLostReport.current = Date.now()
+      void fetch(`/api/exams/session/${sessionId}/incident`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "SIDE_CAMERA_LOST", severity: "HIGH", metadata: { reason: "Side camera (phone) stopped sending pictures", ageSeconds: status.ageSeconds, source: "side-camera" } }) }).catch(() => undefined)
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [started, sessionId, exam?.id])
 
   // ---- timer ---------------------------------------------------------------
   useEffect(() => {
@@ -278,14 +296,16 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
             <li>After the allowed number of violations the exam is submitted automatically.</li>
             <li>Keep your face visible to the camera and stay alone in the room.</li>
           </ul>
+          {exam?.id && <PhonePairing examId={exam.id} onStatus={handlePhoneStatus} />}
           <button
+            disabled={phone.required && !phone.connected}
             onClick={async () => {
               await lockdown.enterFullscreen()
               setStarted(true)
             }}
-            className="mt-6 w-full rounded-md bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700"
+            className="mt-6 w-full rounded-md bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Enter fullscreen and begin exam
+            {phone.required && !phone.connected ? "Connect your phone camera to begin" : "Enter fullscreen and begin exam"}
           </button>
         </div>
       </div>
