@@ -7,6 +7,9 @@ interface Exam {
   title: string
   description?: string | null
   durationMins?: number
+  subjects?: Array<{ name: string; questions: number }>
+  totalQuestions?: number
+  marking?: Array<{ marks: number; negative: number; count: number }>
 }
 
 interface ExamResults {

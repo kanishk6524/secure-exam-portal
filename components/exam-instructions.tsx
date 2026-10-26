@@ -11,23 +11,31 @@ export default function ExamInstructions({ onStartExam }: ExamInstructionsProps)
   const { exam } = useExam()
   const [accepted, setAccepted] = useState(false)
 
-  // Instructions would typically come from the backend based on the selected exam
+  // Built from the selected exam, so the screen always matches what the student will actually get.
+  const minutes = exam?.durationMins ?? 0
+  const duration = minutes >= 60 && minutes % 60 === 0 ? `${minutes / 60} hour${minutes === 60 ? "" : "s"} (${minutes} minutes)` : `${minutes} minutes`
+  const sections = exam?.subjects ?? []
   const instructions = {
     pattern: [
-      "The exam consists of 3 subjects: Physics, Chemistry, and Mathematics.",
-      "Each subject has 25 multiple-choice questions.",
-      "Total duration of the exam is 3 hours (180 minutes).",
+      sections.length
+        ? `The exam has ${sections.length} section${sections.length === 1 ? "" : "s"}: ${sections.map((section) => `${section.name} (${section.questions} question${section.questions === 1 ? "" : "s"})`).join(", ")}.`
+        : "The exam is made of multiple-choice questions.",
+      ...(exam?.totalQuestions ? [`There are ${exam.totalQuestions} questions in total.`] : []),
+      `The total duration is ${duration}. The timer is controlled by the server and keeps running if you refresh the page.`,
     ],
     marking: [
-      "Each correct answer awards 4 marks.",
-      "Each incorrect answer deducts 1 mark (negative marking).",
+      ...(exam?.marking?.length
+        ? exam.marking.map((scheme) => `${scheme.count} question${scheme.count === 1 ? "" : "s"}: +${scheme.marks} for a correct answer${scheme.negative ? `, -${scheme.negative} for a wrong answer` : ", no negative marking"}.`)
+        : ["Marks for each question are shown above the question."]),
       "Unattempted questions receive 0 marks.",
+      "Every answer you select is saved straight away. Answered questions are counted, including those marked for review.",
     ],
     rules: [
-      "You cannot return to a question once skipped or submitted.",
-      "The timer cannot be paused once the exam starts.",
-      "Any form of malpractice will result in disqualification.",
-      "Ensure stable internet connectivity throughout the exam.",
+      "You can move between questions and change answers until you submit or the time is over.",
+      "The exam runs in fullscreen. Leaving fullscreen, switching tabs or windows, and copy/paste are recorded; repeated violations submit your exam automatically.",
+      "Your camera and microphone must stay on. Keep your face visible, sit alone, and do not use phones, books or other screens.",
+      "Your identity is checked against your registration photo during the exam, and your name is watermarked on every screen.",
+      "The exam is submitted automatically when the time ends. Ensure a stable internet connection.",
     ],
   }
 

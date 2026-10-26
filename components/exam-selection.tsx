@@ -12,7 +12,7 @@ interface ExamSelectionProps {
 export default function ExamSelection({ onSelectExam, onSignOut }: ExamSelectionProps) {
   const { setExam, clearExam } = useExam()
   const [selectedExam, setSelectedExam] = useState("")
-  const [exams, setExams] = useState<Array<{ id: string; title: string; description?: string | null; durationMins: number; startTime: string; endTime: string }>>([])
+  const [exams, setExams] = useState<Array<{ id: string; title: string; description?: string | null; durationMins: number; startTime: string; endTime: string; subjects?: Array<{ name: string; questions: number }>; totalQuestions?: number; marking?: Array<{ marks: number; negative: number; count: number }> }>>([])
   const [error, setError] = useState("")
 
   useEffect(() => {

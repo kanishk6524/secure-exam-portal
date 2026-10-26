@@ -63,7 +63,7 @@ export default function CameraCheck({ onReady }: Props) {
         if (cancelled) return
         const detail = describeError(cameraError)
         if (stage === "camera") {
-          setError(detail || "Camera permission was denied")
+          setError(`${detail && !/denied/i.test(detail) ? detail : "Camera or microphone permission was denied"}. Allow both in the browser's address bar (camera icon), then press Try again`)
           setStatus("Camera and microphone access are required")
         } else {
           // The camera works; the face model (downloaded from a CDN) is what failed. Say so, instead of blaming permissions.

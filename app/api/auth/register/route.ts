@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { Prisma, Role } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { relaxedSignup } from "@/lib/signup-mode"
 import { FirebaseAuthError, firebaseConfigured, firebaseSendEmailVerification, firebaseSignInWithPassword, firebaseSignUp } from "@/lib/firebase"
 
 // Compare secrets without leaking length or content through timing.
@@ -28,26 +29,44 @@ const schema = z.object({
     .optional(),
 })
 
+// Local development: take almost any input (see lib/signup-mode.ts).
+const relaxedSchema = z.object({
+  email: z.string().trim().email("Enter an email address like name@example.com"),
+  password: z.string().min(1, "Enter a password"),
+  fullName: z.string().trim().min(1, "Enter a name"),
+  role: z.nativeEnum(Role),
+  adminCode: z.string().optional(),
+  collegeId: z.string().optional(),
+  faceEmbedding: z.array(z.number()).nullable().optional(),
+  profilePhotoUrl: z.string().max(2_000_000).nullable().optional(),
+})
+
 export async function POST(request: Request) {
-  const parsed = schema.safeParse(await request.json())
+  const relaxed = relaxedSignup()
+  const parsed = (relaxed ? relaxedSchema : schema).safeParse(await request.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 })
   const data = parsed.data
   const email = data.email.toLowerCase()
   // Only students may self-register. Admin roles need the invite code set in ADMIN_REGISTRATION_CODE.
-  if (data.role !== Role.STUDENT) {
+  if (data.role !== Role.STUDENT && !relaxed) {
     const expectedCode = process.env.ADMIN_REGISTRATION_CODE
     if (!expectedCode) return NextResponse.json({ error: "Admin registration is disabled. Ask the system owner for an admin account." }, { status: 403 })
     if (!data.adminCode || !secretsMatch(data.adminCode, expectedCode)) return NextResponse.json({ error: "Invalid admin registration code" }, { status: 403 })
   }
-  if (data.role === Role.STUDENT && !data.collegeId) {
+  if (data.role === Role.STUDENT && !data.collegeId && !relaxed) {
     return NextResponse.json({ error: "College is required for student registration" }, { status: 400 })
   }
 
   let collegeId: string | undefined
-  if (data.collegeId) {
-    const college = await prisma.college.findUnique({ where: { code: data.collegeId.trim().toUpperCase() } })
+  const collegeCode = data.collegeId?.trim().toUpperCase()
+  if (collegeCode) {
+    let college = await prisma.college.findUnique({ where: { code: collegeCode } })
+    if (!college && relaxed) college = await prisma.college.create({ data: { code: collegeCode, name: data.collegeId!.trim() } })
     if (!college) return NextResponse.json({ error: "Unknown college code. Check with your admin for the correct code." }, { status: 400 })
     collegeId = college.id
+  } else if (relaxed) {
+    // No college given: use the demo college so the demo exam is visible.
+    collegeId = (await prisma.college.findFirst({ orderBy: { code: "asc" } }))?.id
   }
 
   if (await prisma.user.findUnique({ where: { email } })) {
@@ -65,11 +84,11 @@ export async function POST(request: Request) {
         role: data.role,
         collegeId,
         emailVerified: true,
-        faceEmbedding: data.faceEmbedding ?? Prisma.JsonNull,
+        faceEmbedding: data.faceEmbedding?.length === 128 ? data.faceEmbedding : Prisma.JsonNull,
         profilePhotoUrl: data.profilePhotoUrl ?? null,
       },
     })
-    return NextResponse.json({ message: "Account created. Local development mode: email verification is skipped, so you can sign in now." }, { status: 201 })
+    return NextResponse.json({ message: "Account created and saved. Local development mode: email verification is skipped, so you can sign in now." }, { status: 201 })
   }
 
   let firebaseUser: { idToken: string; localId: string }

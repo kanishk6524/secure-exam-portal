@@ -51,6 +51,8 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   const [capturing, setCapturing] = useState(false)
   const [openingCamera, setOpeningCamera] = useState(false)
   const [photoSkipped, setPhotoSkipped] = useState(false)
+  // Local development mode: nothing is mandatory except email, name and password.
+  const [relaxed, setRelaxed] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const faceapiRef = useRef<typeof import("@vladmandic/face-api/dist/face-api.esm.js") | null>(null)
 
@@ -82,6 +84,10 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
   }
 
   useEffect(() => {
+    fetch("/api/auth/signup-config").then((response) => response.json()).then((data) => setRelaxed(Boolean(data.relaxed))).catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
@@ -104,6 +110,20 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
         )
         faceapiRef.current = faceapi
         if (!cancelled) setModelStatus("ready")
+        // Warm up: the first run on WebGL compiles GPU shaders and can take many seconds. Do it now, while the
+        // student fills in the form, so the selfie check later is quick. Failures here are harmless.
+        try {
+          const blank = document.createElement("canvas")
+          blank.width = 150
+          blank.height = 150
+          await withTimeout(
+            Promise.all([faceapi.nets.faceLandmark68Net.detectLandmarks(blank), faceapi.nets.faceRecognitionNet.computeFaceDescriptor(blank)]),
+            60000,
+            "Face model warm-up timed out.",
+          )
+        } catch (warmupError) {
+          console.warn("Face model warm-up skipped", warmupError)
+        }
       } catch (modelError) {
         console.error("Face model load error", modelError)
         if (!cancelled) setModelStatus("failed")
@@ -157,11 +177,18 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
           .withFaceLandmarks()
           .withFaceDescriptor()
       try {
-        const detection = await withTimeout(
-          runDetection(),
-          10000,
-          "Face verification timed out.",
-        )
+        let detection: Awaited<ReturnType<typeof runDetection>> | undefined
+        try {
+          detection = await withTimeout(runDetection(), 25000, "Face verification timed out.")
+        } catch (firstError) {
+          // Slow or stuck GPU backend: retry once on the CPU backend, which is slower per frame but dependable.
+          console.warn("Face verification on the GPU backend failed, retrying on CPU", firstError)
+          setCaptureStatus("Verifying your face (this can take a few seconds)...")
+          const tf = faceapi.tf as unknown as { setBackend: (name: string) => Promise<boolean>; ready: () => Promise<void> }
+          await tf.setBackend("cpu")
+          await tf.ready()
+          detection = await withTimeout(runDetection(), 40000, "Face verification timed out.")
+        }
         if (detection) {
           setFaceEmbedding(Array.from(detection.descriptor))
           setCaptureStatus("Photo captured and face verification saved. Create your account to finish saving it.")
@@ -169,7 +196,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
           setCaptureStatus("Photo captured and ready to save. No clear face was found for face verification.")
         }
       } catch (verificationError) {
-        console.error("Face verification error", verificationError)
+        console.warn("Face verification error", verificationError)
         setCaptureStatus("Photo captured and ready to save. Face verification could not be completed.")
       }
       stopCamera()
@@ -222,9 +249,9 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Input required placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
           <Input required type="email" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-          {role === "STUDENT" && <Input required placeholder="College code (ask your admin, e.g. DEMO-001)" value={form.collegeId} onChange={(event) => setForm({ ...form, collegeId: event.target.value })} />}
-          {role === "ADMIN" && <Input required type="password" placeholder="Admin registration code" value={form.adminCode} onChange={(event) => setForm({ ...form, adminCode: event.target.value })} />}
-          <Input required type="password" minLength={8} placeholder="Password (8+ characters, including a number)" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+          {role === "STUDENT" && <Input required={!relaxed} placeholder={relaxed ? "College code (optional in local mode, any value works)" : "College code (ask your admin, e.g. DEMO-001)"} value={form.collegeId} onChange={(event) => setForm({ ...form, collegeId: event.target.value })} />}
+          {role === "ADMIN" && <Input required={!relaxed} type="password" placeholder={relaxed ? "Admin registration code (optional in local mode)" : "Admin registration code"} value={form.adminCode} onChange={(event) => setForm({ ...form, adminCode: event.target.value })} />}
+          <Input required type="password" minLength={relaxed ? 1 : 8} placeholder={relaxed ? "Password (any value in local mode)" : "Password (8+ characters, including a number)"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
 
           <video ref={videoRef} muted playsInline autoPlay className={`${cameraOpen ? "" : "hidden"} aspect-video w-full rounded-md bg-gray-900 object-cover`} />
 
@@ -274,7 +301,7 @@ export default function RegisterForm({ role, onBack }: { role: "STUDENT" | "ADMI
 
           {photoSkipped && <p className="text-sm text-gray-600">Photo skipped. You can add it later from your profile.</p>}
 
-          <Button className="w-full" disabled={loading || (!profilePhotoUrl && !photoSkipped)}>
+          <Button className="w-full" disabled={loading || (!relaxed && !profilePhotoUrl && !photoSkipped)}>
             {loading ? "Creating account..." : "Create account"}
           </Button>
           <Button type="button" variant="link" className="w-full" onClick={onBack}>
