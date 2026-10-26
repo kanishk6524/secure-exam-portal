@@ -1,19 +1,28 @@
 import { NextResponse } from "next/server"
 import { ExamStatus } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { requireAdmin } from "@/lib/admin-auth"
+import { getAdminScope } from "@/lib/admin-auth"
+import { recordAudit } from "@/lib/audit"
 
 export async function GET() {
-  if (!await requireAdmin()) return NextResponse.json({ error: "Admin access required" }, { status: 403 })
-  const exams = await prisma.exam.findMany({ include: { subjects: { include: { _count: { select: { questions: true } } } }, _count: { select: { sessions: true } } }, orderBy: { startTime: "desc" } })
+  const scope = await getAdminScope()
+  if (!scope) return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+  const exams = await prisma.exam.findMany({ where: scope.collegeId ? { collegeId: scope.collegeId } : undefined, include: { subjects: { include: { _count: { select: { questions: true } } } }, _count: { select: { sessions: true } } }, orderBy: { startTime: "desc" } })
   return NextResponse.json({ exams })
 }
 
 export async function POST(request: Request) {
-  const session = await requireAdmin()
-  if (!session) return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+  const scope = await getAdminScope()
+  if (!scope) return NextResponse.json({ error: "Admin access required" }, { status: 403 })
   const body = await request.json()
   if (!body.title || !body.durationMins || !body.startTime || !body.endTime) return NextResponse.json({ error: "Title, duration, start time, and end time are required" }, { status: 400 })
-  const exam = await prisma.exam.create({ data: { title: body.title, description: body.description || null, durationMins: Number(body.durationMins), startTime: new Date(body.startTime), endTime: new Date(body.endTime), status: body.status ?? ExamStatus.DRAFT, collegeId: body.collegeId || null, subjects: { create: (body.subjects ?? []).map((subject: { name: string }) => ({ name: subject.name })) } }, include: { subjects: true } })
+  const startTime = new Date(body.startTime)
+  const endTime = new Date(body.endTime)
+  if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime()) || endTime <= startTime) return NextResponse.json({ error: "End time must be after the start time" }, { status: 400 })
+  if (!(Number(body.durationMins) > 0)) return NextResponse.json({ error: "Duration must be a positive number of minutes" }, { status: 400 })
+  // College admins can only create exams for their own college.
+  const collegeId = scope.collegeId ?? (body.collegeId || null)
+  const exam = await prisma.exam.create({ data: { title: body.title, description: body.description || null, durationMins: Number(body.durationMins), startTime, endTime, status: body.status ?? ExamStatus.DRAFT, collegeId, subjects: { create: (body.subjects ?? []).map((subject: { name: string }) => ({ name: subject.name })) } }, include: { subjects: true } })
+  await recordAudit({ action: "exam.create", actorId: scope.session.user.id, details: { examId: exam.id, title: exam.title } })
   return NextResponse.json({ exam }, { status: 201 })
 }

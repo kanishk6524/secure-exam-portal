@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Answer" ADD COLUMN "visited" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "Answer" ADD COLUMN "markedForReview" BOOLEAN NOT NULL DEFAULT false;

@@ -1,21 +1,59 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import AdminLogin from "@/components/admin-login"
 import StudentLogin from "@/components/student-login"
 import ExamSelection from "@/components/exam-selection"
 import ExamInstructions from "@/components/exam-instructions"
 import ExamInterface from "@/components/exam-interface"
+import ConsentScreen from "@/components/consent-screen"
 import CameraCheck from "@/components/proctor/camera-check"
+import GazeCalibration from "@/components/proctor/gaze-calibration"
 import FinalSubmission from "@/components/final-submission"
 import AdminDashboard from "@/components/admin/admin-dashboard"
 import { AuthProvider } from "@/context/auth-context"
 import { ExamProvider } from "@/context/exam-context"
 
+const PAGE_KEY = "exam-portal:page"
+const EXAM_KEY = "exam-portal:exam"
+const SIGNED_IN_PAGES = new Set(["examSelection", "examInstructions", "consent", "cameraCheck", "gazeCalibration", "examInterface", "finalSubmission", "adminDashboard"])
+const NEEDS_EXAM = new Set(["examInstructions", "consent", "cameraCheck", "gazeCalibration", "examInterface", "finalSubmission"])
+
 export default function Home() {
+  const { status } = useSession()
   const [currentPage, setCurrentPage] = useState("home")
+  const [restored, setRestored] = useState(false)
   const [userType, setUserType] = useState("")
   const [startInRegister, setStartInRegister] = useState(false)
+
+  // Refreshing the browser mid-exam used to dump the student on the home screen. Restore the last screen instead.
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(PAGE_KEY)
+      if (saved && SIGNED_IN_PAGES.has(saved)) {
+        const hasExam = Boolean(window.sessionStorage.getItem(EXAM_KEY))
+        setCurrentPage(NEEDS_EXAM.has(saved) && !hasExam ? "examSelection" : saved)
+      }
+    } catch {
+      /* sessionStorage unavailable: start from home */
+    }
+    setRestored(true)
+  }, [])
+
+  useEffect(() => {
+    if (!restored) return
+    try {
+      window.sessionStorage.setItem(PAGE_KEY, currentPage)
+    } catch {
+      /* ignore */
+    }
+  }, [currentPage, restored])
+
+  // A restored screen that needs a login must not be shown after the session has ended.
+  useEffect(() => {
+    if (status === "unauthenticated" && SIGNED_IN_PAGES.has(currentPage)) setCurrentPage("home")
+  }, [status, currentPage])
 
   const renderPage = () => {
     switch (currentPage) {
@@ -83,17 +121,21 @@ export default function Home() {
           </div>
         )
       case "adminLogin":
-        return <AdminLogin startInRegister={startInRegister} onLoginSuccess={() => setCurrentPage("adminDashboard")} />
+        return <AdminLogin onHome={() => setCurrentPage("home")} startInRegister={startInRegister} onLoginSuccess={() => setCurrentPage("adminDashboard")} />
       case "studentLogin":
-        return <StudentLogin startInRegister={startInRegister} onLoginSuccess={() => setCurrentPage("examSelection")} />
+        return <StudentLogin onHome={() => setCurrentPage("home")} startInRegister={startInRegister} onLoginSuccess={() => setCurrentPage("examSelection")} />
       case "examSelection":
-        return <ExamSelection onSelectExam={() => setCurrentPage("examInstructions")} />
+        return <ExamSelection onSelectExam={() => setCurrentPage("examInstructions")} onSignOut={() => setCurrentPage("home")} />
       case "examInstructions":
-        return <ExamInstructions onStartExam={() => setCurrentPage("cameraCheck")} />
+        return <ExamInstructions onStartExam={() => setCurrentPage("consent")} />
+      case "consent":
+        return <ConsentScreen onAgree={() => setCurrentPage("cameraCheck")} onDecline={() => setCurrentPage("examSelection")} />
       case "cameraCheck":
-        return <CameraCheck onReady={() => setCurrentPage("examInterface")} />
+        return <CameraCheck onReady={() => setCurrentPage("gazeCalibration")} />
+      case "gazeCalibration":
+        return <GazeCalibration onDone={() => setCurrentPage("examInterface")} />
       case "examInterface":
-        return <ExamInterface onFinishExam={() => setCurrentPage("finalSubmission")} />
+        return <ExamInterface onFinishExam={() => setCurrentPage("finalSubmission")} onExit={() => setCurrentPage("examSelection")} />
       case "finalSubmission":
         return <FinalSubmission onGoHome={() => setCurrentPage("home")} />
       case "adminDashboard":
@@ -102,6 +144,8 @@ export default function Home() {
         return <div>Page not found</div>
     }
   }
+
+  if (!restored) return <div className="min-h-screen bg-gray-50" />
 
   return (
     <AuthProvider>

@@ -92,3 +92,9 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* exam-print-guard: printing or "save as PDF" of the exam must not produce the questions */
+@media print {
+  body * { visibility: hidden !important; }
+  body::before { content: "Printing is disabled during the exam."; visibility: visible; }
+}

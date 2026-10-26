@@ -1,0 +1,12 @@
+{
+  "examUrl": "http://localhost:3000",
+  "secret": "",
+  "invigilatorPin": "",
+  "blockedProcesses": [
+    "teamviewer", "anydesk", "rustdesk", "parsec", "vncviewer", "vncserver", "tightvnc", "realvnc", "ultraviewer",
+    "supremo", "screenconnect", "remoting_host", "mstsc", "rdpclip", "logmein",
+    "obs", "obs64", "obs-studio", "bandicam", "camtasia", "sharex", "screenrec", "loom", "kazam", "simplescreenrecorder", "vokoscreen",
+    "zoom", "zoom.us", "discord", "skype", "teams", "slack", "telegram", "whatsapp",
+    "chatgpt", "claude"
+  ]
+}

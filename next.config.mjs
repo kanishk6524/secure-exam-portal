@@ -7,6 +7,8 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // The paired phone opens the dev server through an HTTPS tunnel; allow those hosts and PUBLIC_BASE_URL's host.
+  allowedDevOrigins: ["*.trycloudflare.com", "*.ngrok-free.app", "*.ngrok.app", "*.loca.lt", ...(process.env.PUBLIC_BASE_URL ? [new URL(process.env.PUBLIC_BASE_URL).hostname] : [])],
   typescript: {
     ignoreBuildErrors: true,
   },

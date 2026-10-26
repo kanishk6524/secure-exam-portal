@@ -36,6 +36,28 @@ enum IncidentType {
   BACKGROUND_APP
   UNSUPPORTED_BROWSER
   CONNECTION_LOST
+  CAMERA_LOST
+  PROCTOR_UNAVAILABLE
+  MULTIPLE_MONITORS
+  VIRTUAL_CAMERA
+  CLIENT_INTEGRITY
+  SURROUNDING_MOVEMENT
+  SIDE_CAMERA_LOST
+  LIVENESS_FAILED
+  INPUT_ANOMALY
+  DESK_CHECK
+}
+
+enum AppealStatus {
+  PENDING
+  UPHELD
+  OVERTURNED
+}
+
+enum ReviewStatus {
+  PENDING
+  CONFIRMED
+  DISMISSED
 }
 
 enum Severity {
@@ -106,6 +128,7 @@ model Question {
   marks         Int     @default(1)
   negativeMarks Int     @default(0)
   difficulty    Int     @default(1)
+  variantSpec   Json? // optional: numeric template with random values per student (see lib/question-variants.ts)
 }
 
 model ExamSession {
@@ -121,8 +144,17 @@ model ExamSession {
   score         Float?
   riskScore     Int        @default(0)
   status        String     @default("IN_PROGRESS")
+  verdict       String?
+  reviewNote    String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  pausedAt      DateTime? // set while an invigilator has paused the exam
+  pausedSeconds Int        @default(0)
+  consentAt     DateTime?
+  consentVersion String?
   answers       Answer[]
   incidents     Incident[]
+  appeal        Appeal?
 
   @@unique([examId, userId])
 }
@@ -135,6 +167,8 @@ model Answer {
   selectedOption  String?
   descriptiveText String?
   isCorrect       Boolean?
+  visited         Boolean     @default(true)
+  markedForReview Boolean     @default(false)
   updatedAt       DateTime    @updatedAt
 
   @@unique([sessionId, questionId])
@@ -148,15 +182,39 @@ model Incident {
   severity   Severity
   confidence Float?
   metadata   Json?
+  evidence   String?      @db.Text
+  reviewStatus ReviewStatus @default(PENDING)
+  reviewNote String?
+  reviewedById String?
+  reviewedAt DateTime?
   createdAt  DateTime     @default(now())
+
+  @@index([sessionId, createdAt])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
+  seq       Int      @unique @default(autoincrement())
   sessionId String?
   actorId   String?
   action    String
+  details   Json?
   prevHash  String?
   hash      String
   createdAt DateTime @default(now())
+
+  @@index([sessionId, seq])
+}
+
+model Appeal {
+  id            String       @id @default(cuid())
+  sessionId     String       @unique
+  session       ExamSession  @relation(fields: [sessionId], references: [id])
+  userId        String
+  message       String       @db.Text
+  status        AppealStatus @default(PENDING)
+  response      String?      @db.Text
+  respondedById String?
+  createdAt     DateTime     @default(now())
+  respondedAt   DateTime?
 }
