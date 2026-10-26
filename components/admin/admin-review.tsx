@@ -101,6 +101,7 @@ export default function AdminReview() {
                   <p className="text-sm text-gray-500">{detail.exam.title} · {detail.status} · risk {detail.riskScore}{detail.score !== null ? ` · score ${detail.score}` : ""}</p>
                 </div>
                 <div className="flex gap-2">
+                  <a href={`/api/admin/sessions/${detail.id}/report`} target="_blank" rel="noreferrer" className="rounded-md border px-3 py-2 text-sm">Integrity report</a>
                   <button onClick={() => void setVerdict("CLEARED")} className="rounded-md bg-green-600 px-3 py-2 text-sm text-white"><ShieldCheck className="mr-1 inline h-4 w-4" />Clear</button>
                   <button onClick={() => void setVerdict("FLAGGED")} className="rounded-md bg-red-600 px-3 py-2 text-sm text-white"><Flag className="mr-1 inline h-4 w-4" />Flag cheating</button>
                   {detail.verdict && <button onClick={() => void setVerdict(null)} className="rounded-md border px-3 py-2 text-sm">Reopen</button>}

@@ -29,11 +29,19 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
   const staticFrames = useRef(0)
   const darkFrames = useRef(0)
   const startedAt = useRef(0)
+  // Adaptive proctoring: repeated alerts switch this candidate to tighter monitoring for a while; a clean spell relaxes it.
+  const recentAlerts = useRef<number[]>([])
+  const heightenedUntil = useRef(0)
+  const objectTick = useRef(0)
+  const [heightened, setHeightened] = useState(false)
+  const isHeightened = () => Date.now() < heightenedUntil.current
 
   async function emit(type: string, severity: string, confidence?: number, metadata?: Record<string, unknown>) {
     const now = Date.now()
     if (lastIncident.current[type] && now - lastIncident.current[type] < 10_000) return
     lastIncident.current[type] = now
+    recentAlerts.current = [...recentAlerts.current.filter((time) => now - time < 300_000), now]
+    if (recentAlerts.current.length >= 3 && !isHeightened()) { heightenedUntil.current = now + 600_000; setHeightened(true) }
     // Serious findings carry the webcam frame that triggered them, so a reviewer can see what happened.
     const snapshot = severity === "HIGH" || severity === "CRITICAL" ? captureSnapshot(videoRef.current) : undefined
     await fetch(`/api/exams/session/${sessionId}/incident`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, severity, confidence, metadata, snapshot }) }).catch(() => undefined)
@@ -119,23 +127,26 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
             const anomalous = personal ? personal.deviation > 0 || personal.aeAnomaly : headTurned || eyesSideways || eyesDown
             if (anomalous) {
               gazeChecks.current += 1
-              if (gazeChecks.current > 8) await emit("GAZE_AWAY", "MEDIUM", personal ? Math.min(1, Math.max(personal.deviation / 3, personal.aeError && baseline ? personal.aeError / (baseline.aeThreshold * 3) : 0)) : Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { method: personal ? "personal-baseline" : "fixed-threshold", yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current, ...(personal ?? {}) })
+              if (gazeChecks.current > (isHeightened() ? 4 : 8)) await emit("GAZE_AWAY", "MEDIUM", personal ? Math.min(1, Math.max(personal.deviation / 3, personal.aeError && baseline ? personal.aeError / (baseline.aeThreshold * 3) : 0)) : Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { method: personal ? "personal-baseline" : "fixed-threshold", yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current, ...(personal ?? {}) })
             } else if (features || !baseline) gazeChecks.current = 0
           }
           // Identity: first check shortly after the exam starts, then every 90 s. Two mismatches in a row are needed.
-          if (sourceDescriptor.current && Date.now() - lastIdentityCheck.current > (lastIdentityCheck.current === 0 ? 20_000 : 90_000) && Date.now() - startedAt.current > 20_000) {
+          if (sourceDescriptor.current && Date.now() - lastIdentityCheck.current > (lastIdentityCheck.current === 0 ? 20_000 : isHeightened() ? 30_000 : 90_000) && Date.now() - startedAt.current > 20_000) {
             lastIdentityCheck.current = Date.now()
             void verifyIdentity(videoRef.current, sourceDescriptor.current, emit, identityStrikes)
           }
         }, 500)
         objectTimer = window.setInterval(async () => {
           if (!videoRef.current || !objectModel) return
+          if (heightenedUntil.current && !isHeightened()) { heightenedUntil.current = 0; setHeightened(false) }
+          objectTick.current += 1
+          if (!isHeightened() && objectTick.current % 2 === 1) return // normal mode checks every 3 s, enhanced mode every 1.5 s
           const predictions = await objectModel.detect(videoRef.current)
           // A second body in frame (even if the face detector missed it) means help in the room.
           const people = predictions.filter((prediction) => prediction.class === "person" && prediction.score > 0.6).length
           if (people > 1) { personChecks.current += 1; if (personChecks.current >= 2) await emit("MULTIPLE_FACES", "HIGH", undefined, { source: "person-detector", people }) } else personChecks.current = 0
           for (const prediction of predictions) if (allowedObjects.has(prediction.class) && prediction.score > 0.55) await emit("OBJECT_DETECTED", prediction.class === "cell phone" || prediction.class === "laptop" ? "HIGH" : "MEDIUM", prediction.score, { className: prediction.class, confidence: prediction.score })
-        }, 3000)
+        }, 1500)
         // Camera feed sanity: a covered lens (dark) or a frozen/pasted picture (no sensor noise at all) is not a live candidate.
         const probe = document.createElement("canvas")
         probe.width = 32
@@ -173,7 +184,7 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
     return () => { cancelled = true; if (faceTimer) clearInterval(faceTimer); if (objectTimer) clearInterval(objectTimer); if (frameTimer) clearInterval(frameTimer); vad?.pause(); vad?.destroy(); stream?.getTracks().forEach((track) => track.stop()) }
   }, [sessionId, retryKey])
 
-  return <>{permissionError && <div className="fixed bottom-4 left-4 z-50 rounded bg-yellow-100 p-3 text-sm text-yellow-900">Proctoring warning: {permissionError}</div>}<div className="pointer-events-none fixed bottom-3 left-3 z-40 overflow-hidden rounded-md border-2 border-white bg-black shadow-lg"><video ref={videoRef} muted playsInline className="h-24 w-32 -scale-x-100 object-cover" /><span className="absolute left-1 top-1 flex items-center gap-1 rounded bg-black/60 px-1.5 text-[10px] font-semibold text-white"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />LIVE</span></div></>
+  return <>{permissionError && <div className="fixed bottom-4 left-4 z-50 rounded bg-yellow-100 p-3 text-sm text-yellow-900">Proctoring warning: {permissionError}</div>}<div className="pointer-events-none fixed bottom-3 left-3 z-40 overflow-hidden rounded-md border-2 border-white bg-black shadow-lg"><video ref={videoRef} muted playsInline className="h-24 w-32 -scale-x-100 object-cover" /><span className="absolute left-1 top-1 flex items-center gap-1 rounded bg-black/60 px-1.5 text-[10px] font-semibold text-white"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />LIVE</span>{heightened && <span className="absolute bottom-1 left-1 rounded bg-amber-500 px-1.5 text-[10px] font-semibold text-black">Enhanced monitoring</span>}</div></>
 }
 
 function captureSnapshot(video: HTMLVideoElement | null) {
