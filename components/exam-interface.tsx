@@ -121,16 +121,23 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
     setAnswers((previous) => ({ ...previous, [questionId]: { ...(previous[questionId] ?? blankAnswer(questionId)), ...patch, visited: true } }))
   }, [])
 
+  // Reads a JSON response, and turns an empty or non-JSON body (a server crash) into a readable message.
+  async function readJson(response: Response, what: string) {
+    const text = await response.text()
+    try { return text ? JSON.parse(text) : {} } catch { /* fall through */ }
+    throw new Error(`${what} failed (server returned status ${response.status}${text ? "" : " with an empty response"}). Check the terminal running npm run dev for the error; if you just updated the code, run npx prisma migrate deploy and restart`)
+  }
+
   async function loadSession() {
     if (!exam?.id) return
     const startResponse = await fetch(`/api/exams/${exam.id}/start`, { method: "POST" })
-    const start = await startResponse.json()
+    const start = await readJson(startResponse, "Starting the exam")
     if (!startResponse.ok) throw new Error(start.error ?? "Unable to start exam")
     setSessionId(start.sessionId)
     setServerEndsAt(start.serverEndsAt)
     const [questionResponse, answerResponse] = await Promise.all([fetch(`/api/exams/session/${start.sessionId}/questions`), fetch(`/api/exams/session/${start.sessionId}/answers`)])
-    const questionData = await questionResponse.json()
-    const answerData = await answerResponse.json()
+    const questionData = await readJson(questionResponse, "Loading questions")
+    const answerData = await readJson(answerResponse, "Loading saved answers")
     if (!questionResponse.ok) throw new Error(questionData.error ?? "Unable to load questions")
     const sectionOrder = new Map<string, number>()
     for (const question of questionData.questions as Question[]) if (!sectionOrder.has(question.subject.id)) sectionOrder.set(question.subject.id, sectionOrder.size)
