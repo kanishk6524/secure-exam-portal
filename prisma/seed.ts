@@ -1,6 +1,8 @@
 import { PrismaClient, Role } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "node:crypto"
+import { STATIC_PACKS } from "./exam-packs"
+import { installPack } from "./install-pack"
 
 const prisma = new PrismaClient()
 
@@ -74,6 +76,9 @@ async function main() {
       })
     }
   }
+
+  // Pre-installed exam packs: JEE Main mock, college entrance mock and a sample placement drive.
+  for (const pack of STATIC_PACKS) await installPack(prisma, pack)
 }
 
 main()

@@ -11,7 +11,9 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "seed:exams": "tsx prisma/seed-exams.ts",
+    "exam:placement": "tsx prisma/seed-exams.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
