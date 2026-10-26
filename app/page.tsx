@@ -8,6 +8,7 @@ import ExamSelection from "@/components/exam-selection"
 import ExamInstructions from "@/components/exam-instructions"
 import ExamInterface from "@/components/exam-interface"
 import CameraCheck from "@/components/proctor/camera-check"
+import GazeCalibration from "@/components/proctor/gaze-calibration"
 import FinalSubmission from "@/components/final-submission"
 import AdminDashboard from "@/components/admin/admin-dashboard"
 import { AuthProvider } from "@/context/auth-context"
@@ -15,8 +16,8 @@ import { ExamProvider } from "@/context/exam-context"
 
 const PAGE_KEY = "exam-portal:page"
 const EXAM_KEY = "exam-portal:exam"
-const SIGNED_IN_PAGES = new Set(["examSelection", "examInstructions", "cameraCheck", "examInterface", "finalSubmission", "adminDashboard"])
-const NEEDS_EXAM = new Set(["examInstructions", "cameraCheck", "examInterface", "finalSubmission"])
+const SIGNED_IN_PAGES = new Set(["examSelection", "examInstructions", "cameraCheck", "gazeCalibration", "examInterface", "finalSubmission", "adminDashboard"])
+const NEEDS_EXAM = new Set(["examInstructions", "cameraCheck", "gazeCalibration", "examInterface", "finalSubmission"])
 
 export default function Home() {
   const { status } = useSession()
@@ -127,7 +128,9 @@ export default function Home() {
       case "examInstructions":
         return <ExamInstructions onStartExam={() => setCurrentPage("cameraCheck")} />
       case "cameraCheck":
-        return <CameraCheck onReady={() => setCurrentPage("examInterface")} />
+        return <CameraCheck onReady={() => setCurrentPage("gazeCalibration")} />
+      case "gazeCalibration":
+        return <GazeCalibration onDone={() => setCurrentPage("examInterface")} />
       case "examInterface":
         return <ExamInterface onFinishExam={() => setCurrentPage("finalSubmission")} onExit={() => setCurrentPage("examSelection")} />
       case "finalSubmission":

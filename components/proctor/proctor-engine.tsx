@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import * as cocoSsd from "@tensorflow-models/coco-ssd"
 import "@tensorflow/tfjs"
 import { createFaceLandmarker } from "@/lib/face-landmarker"
+import { envelopeDeviation, extractFeatures, loadBaseline, MODEL_URL, reconstructionError, type GazeBaseline } from "@/lib/gaze-baseline"
 
 type Props = { sessionId: string; retryKey?: number; onCameraStatus?: (ok: boolean) => void }
 const allowedObjects = new Set(["cell phone", "book", "laptop", "tv", "remote"])
@@ -47,6 +48,8 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
     let landmarker: import("@mediapipe/tasks-vision").FaceLandmarker | undefined
     let objectModel: cocoSsd.ObjectDetection | undefined
     let vad: { pause: () => void; destroy: () => void } | undefined
+    let baseline: GazeBaseline | null = null
+    let autoencoder: import("@tensorflow/tfjs").LayersModel | undefined
     async function start() {
       try {
         setPermissionError("")
@@ -78,6 +81,11 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
         await videoRef.current.play()
         landmarker = await createFaceLandmarker({ numFaces: 3, blendshapes: true })
         objectModel = await cocoSsd.load()
+        // The candidate's personal gaze baseline and their own trained autoencoder (made in the calibration step).
+        baseline = loadBaseline()
+        if (baseline?.aeTrained) {
+          try { autoencoder = await (await import("@tensorflow/tfjs")).loadLayersModel(MODEL_URL) } catch { autoencoder = undefined }
+        }
         const identityResponse = await fetch("/api/auth/face-embedding")
         if (identityResponse.ok) sourceDescriptor.current = (await identityResponse.json()).faceEmbedding
         const vadModule = await import("@ricky0123/vad-web") as typeof import("@ricky0123/vad-web")
@@ -100,10 +108,19 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
             const eyesSideways = Math.max((shape("eyeLookOutLeft") + shape("eyeLookInRight")) / 2, (shape("eyeLookInLeft") + shape("eyeLookOutRight")) / 2) > EYE_SIDE_THRESHOLD
             const eyesDown = (shape("eyeLookDownLeft") + shape("eyeLookDownRight")) / 2 > EYE_DOWN_THRESHOLD && pitch > 8
             const headTurned = Math.abs(yaw) > 25 || Math.abs(pitch) > 20
-            if (headTurned || eyesSideways || eyesDown) {
+            // Personal baseline: compared with this candidate's own normal range, and scored by their own autoencoder.
+            const features = baseline ? extractFeatures(result) : null
+            let personal: { deviation: number; feature: string | null; aeError: number | null; aeAnomaly: boolean } | null = null
+            if (baseline && features) {
+              const { deviation, feature } = envelopeDeviation(baseline, features)
+              const aeError = autoencoder ? reconstructionError(await import("@tensorflow/tfjs"), autoencoder, baseline, features) : null
+              personal = { deviation, feature, aeError, aeAnomaly: aeError !== null && aeError > baseline.aeThreshold }
+            }
+            const anomalous = personal ? personal.deviation > 0 || personal.aeAnomaly : headTurned || eyesSideways || eyesDown
+            if (anomalous) {
               gazeChecks.current += 1
-              if (gazeChecks.current > 8) await emit("GAZE_AWAY", "MEDIUM", Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current })
-            } else gazeChecks.current = 0
+              if (gazeChecks.current > 8) await emit("GAZE_AWAY", "MEDIUM", personal ? Math.min(1, Math.max(personal.deviation / 3, personal.aeError && baseline ? personal.aeError / (baseline.aeThreshold * 3) : 0)) : Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { method: personal ? "personal-baseline" : "fixed-threshold", yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current, ...(personal ?? {}) })
+            } else if (features || !baseline) gazeChecks.current = 0
           }
           // Identity: first check shortly after the exam starts, then every 90 s. Two mismatches in a row are needed.
           if (sourceDescriptor.current && Date.now() - lastIdentityCheck.current > (lastIdentityCheck.current === 0 ? 20_000 : 90_000) && Date.now() - startedAt.current > 20_000) {
