@@ -10,6 +10,7 @@ import AdminReports from "./admin-reports"
 import AdminMonitoring from "./admin-monitoring"
 import AdminReview from "./admin-review"
 import AdminCollusion from "./admin-collusion"
+import AdminAiFlags from "./admin-ai-flags"
 import AdminSettings from "./admin-settings"
 
 interface AdminDashboardProps {
@@ -34,6 +35,8 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
         return <AdminMonitoring />
       case "review":
         return <AdminReview />
+      case "aiflags":
+        return <AdminAiFlags />
       case "collusion":
         return <AdminCollusion />
       case "reports":
@@ -98,6 +101,15 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
             >
               <Shield className="w-5 h-5 mr-3" />
               Monitoring
+            </button>
+            <button
+              onClick={() => setActiveTab("aiflags")}
+              className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-md ${
+                activeTab === "aiflags" ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <ClipboardCheck className="w-5 h-5 mr-3" />
+              AI Flag Dashboard
             </button>
             <button
               onClick={() => setActiveTab("review")}

@@ -27,7 +27,7 @@ const GROUPS: Record<Exclude<FeatureName, "burst" | "fastCorrect">, string[]> = 
   gaze: ["GAZE_AWAY"],
   tabSwitch: ["TAB_SWITCH", "FULLSCREEN_EXIT", "BACKGROUND_APP"],
   clipboard: ["COPY_ATTEMPT", "PASTE_ATTEMPT", "CUT_ATTEMPT"],
-  face: ["NO_FACE", "MULTIPLE_FACES"],
+  face: ["NO_FACE", "MULTIPLE_FACES", "SURROUNDING_MOVEMENT"],
   object: ["OBJECT_DETECTED"],
   identity: ["IDENTITY_MISMATCH"],
   tamper: ["VIRTUAL_CAMERA", "CLIENT_INTEGRITY", "MULTIPLE_MONITORS", "CAMERA_LOST"],

@@ -41,6 +41,7 @@ enum IncidentType {
   MULTIPLE_MONITORS
   VIRTUAL_CAMERA
   CLIENT_INTEGRITY
+  SURROUNDING_MOVEMENT
 }
 
 enum ReviewStatus {

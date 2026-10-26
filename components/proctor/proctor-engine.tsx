@@ -52,6 +52,7 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
     let faceTimer: number | undefined
     let objectTimer: number | undefined
     let frameTimer: number | undefined
+    let motionTimer: number | undefined
     let stream: MediaStream | undefined
     let landmarker: import("@mediapipe/tasks-vision").FaceLandmarker | undefined
     let objectModel: cocoSsd.ObjectDetection | undefined
@@ -96,6 +97,11 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
         }
         const identityResponse = await fetch("/api/auth/face-embedding")
         if (identityResponse.ok) sourceDescriptor.current = (await identityResponse.json()).faceEmbedding
+        // The photo taken just before the exam (camera check) is the reference for the whole exam; the registration photo is the fallback.
+        try {
+          const reference = JSON.parse(sessionStorage.getItem("examFaceRef") ?? "null")
+          if (Array.isArray(reference) && reference.length === 128) sourceDescriptor.current = reference
+        } catch { /* use the registered descriptor */ }
         const vadModule = await import("@ricky0123/vad-web") as typeof import("@ricky0123/vad-web")
         let speechTimes: number[] = []
         vad = await vadModule.MicVAD.new({ getStream: async () => stream!, onSpeechStart: () => { speechTimes = [...speechTimes.filter((time) => Date.now() - time < 3500), Date.now()]; if (speechTimes.length >= 2) void emit("AUDIO_ANOMALY", "MEDIUM", undefined, { reason: "Multiple speech segments in short window" }) } })
@@ -130,8 +136,8 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
               if (gazeChecks.current > (isHeightened() ? 4 : 8)) await emit("GAZE_AWAY", "MEDIUM", personal ? Math.min(1, Math.max(personal.deviation / 3, personal.aeError && baseline ? personal.aeError / (baseline.aeThreshold * 3) : 0)) : Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { method: personal ? "personal-baseline" : "fixed-threshold", yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current, ...(personal ?? {}) })
             } else if (features || !baseline) gazeChecks.current = 0
           }
-          // Identity: first check shortly after the exam starts, then every 90 s. Two mismatches in a row are needed.
-          if (sourceDescriptor.current && Date.now() - lastIdentityCheck.current > (lastIdentityCheck.current === 0 ? 20_000 : isHeightened() ? 30_000 : 90_000) && Date.now() - startedAt.current > 20_000) {
+          // Identity: the face must match the pre-exam photo for the whole exam: checked 5 s in, then every 15 s (8 s in enhanced mode).
+          if (sourceDescriptor.current && Date.now() - lastIdentityCheck.current > (lastIdentityCheck.current === 0 ? 5_000 : isHeightened() ? 8_000 : 15_000) && Date.now() - startedAt.current > 5_000) {
             lastIdentityCheck.current = Date.now()
             void verifyIdentity(videoRef.current, sourceDescriptor.current, emit, identityStrikes)
           }
@@ -147,6 +153,32 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
           if (people > 1) { personChecks.current += 1; if (personChecks.current >= 2) await emit("MULTIPLE_FACES", "HIGH", undefined, { source: "person-detector", people }) } else personChecks.current = 0
           for (const prediction of predictions) if (allowedObjects.has(prediction.class) && prediction.score > 0.55) await emit("OBJECT_DETECTED", prediction.class === "cell phone" || prediction.class === "laptop" ? "HIGH" : "MEDIUM", prediction.score, { className: prediction.class, confidence: prediction.score })
         }, 1500)
+        // Movement in the surroundings: change in the outer edges of the camera view (where the candidate's face is not), compared with the previous second.
+        const motionProbe = document.createElement("canvas")
+        motionProbe.width = 64
+        motionProbe.height = 48
+        const motionContext = motionProbe.getContext("2d", { willReadFrequently: true })
+        let previousEdges: number[] | null = null
+        let motionChecks = 0
+        motionTimer = window.setInterval(() => {
+          const video = videoRef.current
+          if (!video || !motionContext || video.readyState < 2) return
+          motionContext.drawImage(video, 0, 0, 64, 48)
+          const pixels = motionContext.getImageData(0, 0, 64, 48).data
+          const edges: number[] = []
+          for (let y = 0; y < 48; y += 1) for (let x = 0; x < 64; x += 1) if (x < 12 || x >= 52) edges.push((pixels[(y * 64 + x) * 4] + pixels[(y * 64 + x) * 4 + 1] + pixels[(y * 64 + x) * 4 + 2]) / 3)
+          if (previousEdges) {
+            const meanNow = edges.reduce((a, b) => a + b, 0) / edges.length
+            const meanBefore = previousEdges.reduce((a, b) => a + b, 0) / previousEdges.length
+            // Subtract the overall brightness change so camera auto-exposure is not mistaken for movement.
+            let difference = 0
+            for (let index = 0; index < edges.length; index += 1) difference += Math.abs(edges[index] - previousEdges[index] - (meanNow - meanBefore))
+            difference /= edges.length
+            motionChecks = difference > 12 ? motionChecks + 1 : 0
+            if (motionChecks >= 2) void emit("SURROUNDING_MOVEMENT", "MEDIUM", Math.min(1, difference / 40), { motion: Math.round(difference * 10) / 10, reason: "Movement detected around the candidate" })
+          }
+          previousEdges = edges
+        }, 1000)
         // Camera feed sanity: a covered lens (dark) or a frozen/pasted picture (no sensor noise at all) is not a live candidate.
         const probe = document.createElement("canvas")
         probe.width = 32
@@ -181,7 +213,7 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
       }
     }
     void start()
-    return () => { cancelled = true; if (faceTimer) clearInterval(faceTimer); if (objectTimer) clearInterval(objectTimer); if (frameTimer) clearInterval(frameTimer); vad?.pause(); vad?.destroy(); stream?.getTracks().forEach((track) => track.stop()) }
+    return () => { cancelled = true; if (faceTimer) clearInterval(faceTimer); if (objectTimer) clearInterval(objectTimer); if (frameTimer) clearInterval(frameTimer); if (motionTimer) clearInterval(motionTimer); vad?.pause(); vad?.destroy(); stream?.getTracks().forEach((track) => track.stop()) }
   }, [sessionId, retryKey])
 
   return <>{permissionError && <div className="fixed bottom-4 left-4 z-50 rounded bg-yellow-100 p-3 text-sm text-yellow-900">Proctoring warning: {permissionError}</div>}<div className="pointer-events-none fixed bottom-3 left-3 z-40 overflow-hidden rounded-md border-2 border-white bg-black shadow-lg"><video ref={videoRef} muted playsInline className="h-24 w-32 -scale-x-100 object-cover" /><span className="absolute left-1 top-1 flex items-center gap-1 rounded bg-black/60 px-1.5 text-[10px] font-semibold text-white"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />LIVE</span>{heightened && <span className="absolute bottom-1 left-1 rounded bg-amber-500 px-1.5 text-[10px] font-semibold text-black">Enhanced monitoring</span>}</div></>
@@ -209,8 +241,8 @@ async function verifyIdentity(video: HTMLVideoElement, expected: number[], emit:
     const distance = faceapi.euclideanDistance(expected, Array.from(detection.descriptor))
     if (distance > 0.6) {
       strikes.current += 1
-      // One bad frame (blur, odd angle) is not enough; two consecutive checks that disagree are.
-      if (strikes.current >= 2) await emit("IDENTITY_MISMATCH", "CRITICAL", distance, { distance, threshold: 0.6, consecutiveMismatches: strikes.current })
+      // One blurry frame is not enough; two consecutive mismatches are, or one that is clearly a different person.
+      if (strikes.current >= 2 || distance > 0.75) await emit("IDENTITY_MISMATCH", "CRITICAL", distance, { distance, threshold: 0.6, consecutiveMismatches: strikes.current })
     } else strikes.current = 0
   } catch { /* Identity models are optional until registration has a descriptor. */ }
 }

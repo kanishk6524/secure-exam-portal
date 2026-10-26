@@ -190,7 +190,7 @@ export function liveDemoPack(id: string, minutes: number): ExamPack {
   return {
     id,
     title: `Live Demo Exam (${minutes} minute${minutes === 1 ? "" : "s"})`,
-    description: `Short demonstration exam. The countdown runs on the server and the exam submits itself when the ${minutes}-minute timer ends. +4 for a correct answer, -1 for a wrong one.`,
+    description: `Short live demonstration exam with a real server-side ${minutes}-minute countdown and full proctoring. Answer and press Submit yourself. +4 for a correct answer, -1 for a wrong one.`,
     durationMins: minutes,
     marks: 4,
     negative: 1,
@@ -210,4 +210,4 @@ export function liveDemoPack(id: string, minutes: number): ExamPack {
   }
 }
 
-export const STATIC_PACKS: ExamPack[] = [JEE_MAIN_MOCK, COLLEGE_ENTRANCE_MOCK, placementPack("Sample Company", "pack-placement-sample"), liveDemoPack("pack-live-demo", 2)]
+export const STATIC_PACKS: ExamPack[] = [JEE_MAIN_MOCK, COLLEGE_ENTRANCE_MOCK, placementPack("Sample Company", "pack-placement-sample"), liveDemoPack("pack-live-demo", 1)]
