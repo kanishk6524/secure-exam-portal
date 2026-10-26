@@ -17,8 +17,11 @@ export default function AdminMonitoring() {
 
   async function load() {
     const response = await fetch("/api/admin/monitoring/active")
-    const data = await response.json()
-    if (response.ok) { setSessions(data.sessions); if (!selectedExamId && data.sessions[0]) setSelectedExamId(data.sessions[0].examId) }
+    const text = await response.text()
+    let data: { sessions?: Session[]; error?: string } = {}
+    try { data = text ? JSON.parse(text) : {} } catch { /* not JSON */ }
+    if (!text) { setMessage(`The server returned an empty response (status ${response.status}). Run "npx prisma migrate deploy" and "npx prisma generate", then restart npm run dev.`); return }
+    if (response.ok && data.sessions) { setSessions(data.sessions); if (!selectedExamId && data.sessions[0]) setSelectedExamId(data.sessions[0].examId) }
     else setMessage(data.error ?? "Unable to load monitoring data")
   }
   useEffect(() => { load(); const refresh = setInterval(load, 10000); return () => clearInterval(refresh) }, [])
