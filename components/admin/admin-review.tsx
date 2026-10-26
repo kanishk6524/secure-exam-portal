@@ -17,7 +17,7 @@ type SessionRow = {
   exam: { id: string; title: string }
 }
 type IncidentRow = { id: string; type: string; severity: string; confidence: number | null; metadata: Record<string, unknown> | null; evidence: string | null; reviewStatus: "PENDING" | "CONFIRMED" | "DISMISSED"; reviewNote: string | null; createdAt: string }
-type Detail = { id: string; status: string; riskScore: number; verdict: string | null; reviewNote: string | null; score: number | null; user: { fullName: string; email: string }; exam: { title: string }; incidents: IncidentRow[] }
+type Detail = { id: string; status: string; riskScore: number; verdict: string | null; reviewNote: string | null; score: number | null; user: { fullName: string; email: string }; exam: { title: string }; incidents: IncidentRow[]; integrity?: { probability: number; level: "LOW" | "ELEVATED" | "HIGH"; trained: boolean; samples: number; factors: Array<{ feature: string; label: string; contribution: number }> } }
 
 const SEVERITY_STYLE: Record<string, string> = { LOW: "bg-gray-100 text-gray-700", MEDIUM: "bg-yellow-100 text-yellow-800", HIGH: "bg-orange-100 text-orange-800", CRITICAL: "bg-red-100 text-red-800" }
 const riskStyle = (risk: number) => (risk >= 60 ? "bg-red-600" : risk >= 25 ? "bg-orange-500" : "bg-yellow-500")
@@ -106,6 +106,19 @@ export default function AdminReview() {
                   {detail.verdict && <button onClick={() => void setVerdict(null)} className="rounded-md border px-3 py-2 text-sm">Reopen</button>}
                 </div>
               </div>
+              {detail.integrity && (
+                <div className={`mt-3 rounded-md border p-3 text-sm ${detail.integrity.level === "HIGH" ? "border-red-300 bg-red-50" : detail.integrity.level === "ELEVATED" ? "border-orange-300 bg-orange-50" : "border-green-300 bg-green-50"}`}>
+                  <p className="font-semibold">ML integrity assessment: {Math.round(detail.integrity.probability * 100)}% likelihood of cheating ({detail.integrity.level.toLowerCase()})</p>
+                  {detail.integrity.factors.length > 0 ? (
+                    <ul className="mt-1 space-y-1">
+                      {detail.integrity.factors.map((factor) => (
+                        <li key={factor.feature} className="flex items-center gap-2 text-xs"><span className="w-64 shrink-0">{factor.label}</span><span className="h-2 rounded bg-gray-700" style={{ width: `${Math.min(100, factor.contribution * 40)}px` }} /><span className="text-gray-500">+{factor.contribution.toFixed(2)}</span></li>
+                      ))}
+                    </ul>
+                  ) : <p className="mt-1 text-xs text-gray-600">No behaviour contributed to the score.</p>}
+                  <p className="mt-2 text-[11px] text-gray-500">{detail.integrity.trained ? `Model fitted to ${detail.integrity.samples} reviewed sessions.` : "Model uses starting weights (priors). Review sessions, then run npm run train:integrity to fit it to your own verdicts."} A reviewer always makes the final decision.</p>
+                </div>
+              )}
               <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Reviewer note (saved with the verdict)" className="mt-3 w-full rounded border p-2 text-sm" rows={2} />
               {detail.verdict && <p className="mt-1 text-xs text-gray-500">Current verdict: <b>{detail.verdict}</b></p>}
 
