@@ -56,6 +56,8 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   const [answers, setAnswers] = useState<Record<string, Answer>>({})
   const [currentIndex, setCurrentIndex] = useState(0)
   const [timeLeft, setTimeLeft] = useState(0)
+  // timeLeft starts at 0 before the first clock reading; without this flag that 0 looked like "time is up" and submitted at once.
+  const [clockReady, setClockReady] = useState(false)
   const [error, setError] = useState("")
   const [saveWarning, setSaveWarning] = useState(false)
   const [blocked, setBlocked] = useState(false)
@@ -165,7 +167,7 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   // ---- timer ---------------------------------------------------------------
   useEffect(() => {
     if (!serverEndsAt) return
-    const sync = () => setTimeLeft(Math.max(0, Math.floor((new Date(serverEndsAt).getTime() - Date.now()) / 1000)))
+    const sync = () => { setTimeLeft(Math.max(0, Math.floor((new Date(serverEndsAt).getTime() - Date.now()) / 1000))); setClockReady(true) }
     sync()
     const timer = setInterval(sync, 1000)
     return () => clearInterval(timer)
@@ -222,9 +224,9 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   sessionEndedRef.current = handleSessionEnded
 
   useEffect(() => {
-    if (timeLeft !== 0 || !sessionId || !serverEndsAt || submitting.current) return
+    if (!clockReady || timeLeft !== 0 || !sessionId || !serverEndsAt || submitting.current) return
     void submitExam()
-  }, [timeLeft, sessionId, serverEndsAt, submitRetry])
+  }, [clockReady, timeLeft, sessionId, serverEndsAt, submitRetry])
 
   // ---- lockdown ----------------------------------------------------------------
   const lockdown = useExamLockdown({ sessionId, active: started && Boolean(sessionId) && !finished && !blocked, onAutoSubmitted: () => void submitExam() })
