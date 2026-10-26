@@ -196,8 +196,9 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
       const response = await fetch(`/api/exams/session/${sessionId}/submit`, { method: "POST" })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? "Unable to submit exam")
-      const attempted = Object.values(answers).filter((answer) => answer.selectedOption || answer.descriptiveText).length
-      setExamResults({ attempted, skipped: questions.length - attempted, unattempted: questions.length - attempted, totalQuestions: questions.length, answers, score: data.score, status: data.status })
+      const totalQuestions = typeof data.totalQuestions === "number" ? data.totalQuestions : questions.length
+      const attempted = typeof data.attempted === "number" ? data.attempted : Object.values(answers).filter((answer) => answer.selectedOption || answer.descriptiveText).length
+      setExamResults({ attempted, skipped: totalQuestions - attempted, unattempted: totalQuestions - attempted, totalQuestions, answers, score: data.score, status: data.status })
       setFinished(true)
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined)
       onFinishExam()

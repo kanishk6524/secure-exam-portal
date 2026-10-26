@@ -185,4 +185,29 @@ export function placementPack(companyName: string, id: string): ExamPack {
   }
 }
 
-export const STATIC_PACKS: ExamPack[] = [JEE_MAIN_MOCK, COLLEGE_ENTRANCE_MOCK, placementPack("Sample Company", "pack-placement-sample")]
+/** A short exam for showing the portal live: real-time server timer, proctoring and auto-submit all work in a couple of minutes. */
+export function liveDemoPack(id: string, minutes: number): ExamPack {
+  return {
+    id,
+    title: `Live Demo Exam (${minutes} minute${minutes === 1 ? "" : "s"})`,
+    description: `Short demonstration exam. The countdown runs on the server and the exam submits itself when the ${minutes}-minute timer ends. +4 for a correct answer, -1 for a wrong one.`,
+    durationMins: minutes,
+    marks: 4,
+    negative: 1,
+    subjects: [
+      {
+        name: "Quick Round",
+        questions: [
+          q("Which data structure follows the LIFO principle?", ["Queue", "Stack", "Array", "Heap"], 1),
+          q("What is 15% of 200?", ["20", "25", "30", "35"], 2),
+          q("The time complexity of binary search is:", ["O(n)", "O(log n)", "O(n²)", "O(1)"], 1),
+          q("Which of these is a prime number?", ["21", "27", "29", "33"], 2),
+          q("Which HTTP status code means 'Not Found'?", ["200", "301", "404", "500"], 2),
+          q("The SI unit of force is:", ["Joule", "Newton", "Watt", "Pascal"], 1),
+        ],
+      },
+    ],
+  }
+}
+
+export const STATIC_PACKS: ExamPack[] = [JEE_MAIN_MOCK, COLLEGE_ENTRANCE_MOCK, placementPack("Sample Company", "pack-placement-sample"), liveDemoPack("pack-live-demo", 2)]
