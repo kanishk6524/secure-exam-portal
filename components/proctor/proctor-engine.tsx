@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from "react"
 import * as cocoSsd from "@tensorflow-models/coco-ssd"
 import "@tensorflow/tfjs"
 import { createFaceLandmarker } from "@/lib/face-landmarker"
+import { fixedRuleAnomalous } from "@/lib/fixed-gaze-rule"
 import { envelopeDeviation, extractFeatures, loadBaseline, MODEL_URL, reconstructionError, type GazeBaseline } from "@/lib/gaze-baseline"
 
 type Props = { sessionId: string; retryKey?: number; onCameraStatus?: (ok: boolean) => void }
 const allowedObjects = new Set(["cell phone", "book", "laptop", "tv", "remote"])
 // Webcam names that belong to software cameras (a pre-recorded or remote person instead of the real candidate).
 const VIRTUAL_CAMERA_PATTERN = /(obs|virtual|manycam|snap camera|droidcam|iriun|epoccam|xsplit|camo|splitcam|vcam|ndi|streamlabs|youcam|mmhmm|chromacam)/i
-const EYE_SIDE_THRESHOLD = 0.55
-const EYE_DOWN_THRESHOLD = 0.6
 const faceApiModels = "/models"
 
 export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus }: Props) {
@@ -119,9 +118,13 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
             // even when the head itself barely moves.
             const shapes = new Map((result.faceBlendshapes?.[0]?.categories ?? []).map((category) => [category.categoryName, category.score]))
             const shape = (name: string) => shapes.get(name) ?? 0
-            const eyesSideways = Math.max((shape("eyeLookOutLeft") + shape("eyeLookInRight")) / 2, (shape("eyeLookInLeft") + shape("eyeLookOutRight")) / 2) > EYE_SIDE_THRESHOLD
-            const eyesDown = (shape("eyeLookDownLeft") + shape("eyeLookDownRight")) / 2 > EYE_DOWN_THRESHOLD && pitch > 8
-            const headTurned = Math.abs(yaw) > 25 || Math.abs(pitch) > 20
+            const fixed = fixedRuleAnomalous(
+              yaw,
+              pitch,
+              Math.max((shape("eyeLookOutLeft") + shape("eyeLookInRight")) / 2, (shape("eyeLookInLeft") + shape("eyeLookOutRight")) / 2),
+              (shape("eyeLookDownLeft") + shape("eyeLookDownRight")) / 2,
+            )
+            const { eyesSideways, eyesDown, headTurned } = fixed
             // Personal baseline: compared with this candidate's own normal range, and scored by their own autoencoder.
             const features = baseline ? extractFeatures(result) : null
             let personal: { deviation: number; feature: string | null; aeError: number | null; aeAnomaly: boolean } | null = null
@@ -130,7 +133,7 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
               const aeError = autoencoder ? reconstructionError(await import("@tensorflow/tfjs"), autoencoder, baseline, features) : null
               personal = { deviation, feature, aeError, aeAnomaly: aeError !== null && aeError > baseline.aeThreshold }
             }
-            const anomalous = personal ? personal.deviation > 0 || personal.aeAnomaly : headTurned || eyesSideways || eyesDown
+            const anomalous = personal ? personal.deviation > 0 || personal.aeAnomaly : fixed.anomalous
             if (anomalous) {
               gazeChecks.current += 1
               if (gazeChecks.current > (isHeightened() ? 4 : 8)) await emit("GAZE_AWAY", "MEDIUM", personal ? Math.min(1, Math.max(personal.deviation / 3, personal.aeError && baseline ? personal.aeError / (baseline.aeThreshold * 3) : 0)) : Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { method: personal ? "personal-baseline" : "fixed-threshold", yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current, ...(personal ?? {}) })

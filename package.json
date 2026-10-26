@@ -9,13 +9,14 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "prisma:seed": "tsx prisma/seed.ts",
-    "seed:exams": "tsx prisma/seed-exams.ts",
-    "exam:placement": "tsx prisma/seed-exams.ts",
     "train:integrity": "tsx scripts/train-integrity.ts",
-    "exam:demo": "tsx prisma/seed-exams.ts --demo"
+    "exam:demo": "tsx prisma/seed-exams.ts --demo",
+    "ablation": "tsx scripts/ablation.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "seed:exams": "tsx prisma/seed-exams.ts",
+    "exam:placement": "tsx prisma/seed-exams.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

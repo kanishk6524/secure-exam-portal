@@ -1,0 +1,2073 @@
+{
+  "seeds": [
+    11,
+    23,
+    37
+  ],
+  "users": 500,
+  "examMinutes": 60,
+  "scenarios": [
+    {
+      "name": "default",
+      "description": "Mixed population, normal honest glances, standard cheating",
+      "wideShare": 0.15,
+      "wideFactor": 2.5,
+      "glancePerMin": 0.33,
+      "longThinkPerMin": 0.08,
+      "calibrationContamination": 0,
+      "cheatStrength": 1,
+      "subtleShare": 0.25
+    },
+    {
+      "name": "homogeneous",
+      "description": "Everyone sits like the average student (no wide-movement users) - the fixed rule's best case",
+      "wideShare": 0,
+      "wideFactor": 2.5,
+      "glancePerMin": 0.33,
+      "longThinkPerMin": 0.08,
+      "calibrationContamination": 0,
+      "cheatStrength": 1,
+      "subtleShare": 0.25
+    },
+    {
+      "name": "restless-honest",
+      "description": "Honest candidates look away twice as often",
+      "wideShare": 0.15,
+      "wideFactor": 2.5,
+      "glancePerMin": 0.66,
+      "longThinkPerMin": 0.16,
+      "calibrationContamination": 0,
+      "cheatStrength": 1,
+      "subtleShare": 0.25
+    },
+    {
+      "name": "careful-cheater",
+      "description": "Cheaters make smaller movements (60% amplitude) and use the eyes more",
+      "wideShare": 0.15,
+      "wideFactor": 2.5,
+      "glancePerMin": 0.33,
+      "longThinkPerMin": 0.08,
+      "calibrationContamination": 0,
+      "cheatStrength": 0.6,
+      "subtleShare": 0.5
+    },
+    {
+      "name": "dirty-calibration",
+      "description": "10% of the calibration frames were taken while already looking off-screen (candidate gaming the baseline)",
+      "wideShare": 0.15,
+      "wideFactor": 2.5,
+      "glancePerMin": 0.33,
+      "longThinkPerMin": 0.08,
+      "calibrationContamination": 0.1,
+      "cheatStrength": 1,
+      "subtleShare": 0.25
+    }
+  ],
+  "results": {
+    "default": [
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.05,
+          "honestFlaggedShare": 0.732,
+          "episodeRecall": 0.5026666666666667
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.978,
+          "honestFlaggedShare": 0.832,
+          "episodeRecall": 0.772
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 20.7,
+            "honestFlaggedShare": 0.988,
+            "episodeRecall": 0.7946666666666666
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 5.448,
+            "honestFlaggedShare": 0.924,
+            "episodeRecall": 0.67
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.05,
+            "honestFlaggedShare": 0.732,
+            "episodeRecall": 0.5026666666666667
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.78,
+            "honestFlaggedShare": 0.412,
+            "episodeRecall": 0.318
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.194,
+            "honestFlaggedShare": 0.132,
+            "episodeRecall": 0.19866666666666666
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.01,
+            "honestFlaggedShare": 0.01,
+            "episodeRecall": 0.06533333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.011333333333333334
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.0006666666666666666
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.148,
+            "honestFlaggedShare": 0.954,
+            "episodeRecall": 0.9213333333333333
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 3.836,
+            "honestFlaggedShare": 0.918,
+            "episodeRecall": 0.8766666666666667
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.426,
+            "honestFlaggedShare": 0.884,
+            "episodeRecall": 0.8233333333333334
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.978,
+            "honestFlaggedShare": 0.832,
+            "episodeRecall": 0.772
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.338,
+            "honestFlaggedShare": 0.76,
+            "episodeRecall": 0.702
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.75,
+            "honestFlaggedShare": 0.676,
+            "episodeRecall": 0.6273333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.956,
+            "honestFlaggedShare": 0.454,
+            "episodeRecall": 0.47533333333333333
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.526,
+            "honestFlaggedShare": 0.28,
+            "episodeRecall": 0.342
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.054,
+            "honestFlaggedShare": 0.046,
+            "episodeRecall": 0.128
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.5483657053168531,
+        "recallPersonalAtFixedFA": 0.6654285714285714,
+        "faDiff": {
+          "mean": -0.9406760000000006,
+          "lo": -1.47,
+          "hi": -0.19
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.596,
+          "honestFlaggedShare": 0.75,
+          "episodeRecall": 0.49133333333333334
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.796,
+          "honestFlaggedShare": 0.84,
+          "episodeRecall": 0.7826666666666666
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 20.366,
+            "honestFlaggedShare": 0.978,
+            "episodeRecall": 0.8006666666666666
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 4.634,
+            "honestFlaggedShare": 0.928,
+            "episodeRecall": 0.676
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.596,
+            "honestFlaggedShare": 0.75,
+            "episodeRecall": 0.49133333333333334
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.582,
+            "honestFlaggedShare": 0.388,
+            "episodeRecall": 0.30733333333333335
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.166,
+            "honestFlaggedShare": 0.13,
+            "episodeRecall": 0.18333333333333332
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.012,
+            "honestFlaggedShare": 0.012,
+            "episodeRecall": 0.06266666666666666
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.002,
+            "honestFlaggedShare": 0.002,
+            "episodeRecall": 0.010666666666666666
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.0006666666666666666
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.062,
+            "honestFlaggedShare": 0.948,
+            "episodeRecall": 0.922
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 3.668,
+            "honestFlaggedShare": 0.912,
+            "episodeRecall": 0.8833333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.27,
+            "honestFlaggedShare": 0.882,
+            "episodeRecall": 0.8346666666666667
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.796,
+            "honestFlaggedShare": 0.84,
+            "episodeRecall": 0.7826666666666666
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.164,
+            "honestFlaggedShare": 0.766,
+            "episodeRecall": 0.7146666666666667
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.624,
+            "honestFlaggedShare": 0.658,
+            "episodeRecall": 0.634
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.898,
+            "honestFlaggedShare": 0.422,
+            "episodeRecall": 0.4646666666666667
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.446,
+            "honestFlaggedShare": 0.262,
+            "episodeRecall": 0.31466666666666665
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.052,
+            "honestFlaggedShare": 0.046,
+            "episodeRecall": 0.12133333333333333
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.564276058810621,
+        "recallPersonalAtFixedFA": 0.6274692378328742,
+        "faDiff": {
+          "mean": -1.2041039999999985,
+          "lo": -1.434,
+          "hi": -0.964
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.292,
+          "honestFlaggedShare": 0.742,
+          "episodeRecall": 0.48533333333333334
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.766,
+          "honestFlaggedShare": 0.81,
+          "episodeRecall": 0.7733333333333333
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 21.338,
+            "honestFlaggedShare": 0.992,
+            "episodeRecall": 0.8013333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 6.542,
+            "honestFlaggedShare": 0.94,
+            "episodeRecall": 0.6753333333333333
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.292,
+            "honestFlaggedShare": 0.742,
+            "episodeRecall": 0.48533333333333334
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.776,
+            "honestFlaggedShare": 0.37,
+            "episodeRecall": 0.30133333333333334
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.212,
+            "honestFlaggedShare": 0.136,
+            "episodeRecall": 0.20333333333333334
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.032,
+            "honestFlaggedShare": 0.024,
+            "episodeRecall": 0.07
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.011333333333333334
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.068,
+            "honestFlaggedShare": 0.952,
+            "episodeRecall": 0.9133333333333333
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 3.654,
+            "honestFlaggedShare": 0.882,
+            "episodeRecall": 0.8713333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.258,
+            "honestFlaggedShare": 0.84,
+            "episodeRecall": 0.83
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.766,
+            "honestFlaggedShare": 0.81,
+            "episodeRecall": 0.7733333333333333
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.168,
+            "honestFlaggedShare": 0.74,
+            "episodeRecall": 0.6933333333333334
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.604,
+            "honestFlaggedShare": 0.63,
+            "episodeRecall": 0.6266666666666667
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.868,
+            "honestFlaggedShare": 0.392,
+            "episodeRecall": 0.4673333333333333
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.434,
+            "honestFlaggedShare": 0.246,
+            "episodeRecall": 0.318
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.038,
+            "honestFlaggedShare": 0.036,
+            "episodeRecall": 0.12266666666666666
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.5065239215686275,
+        "recallPersonalAtFixedFA": 0.7099219620958751,
+        "faDiff": {
+          "mean": -0.4847739999999994,
+          "lo": -1.04,
+          "hi": 0.198
+        }
+      }
+    ],
+    "homogeneous": [
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.798,
+          "honestFlaggedShare": 0.72,
+          "episodeRecall": 0.4886666666666667
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 3.384,
+          "honestFlaggedShare": 0.938,
+          "episodeRecall": 0.8566666666666667
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 16.902,
+            "honestFlaggedShare": 0.988,
+            "episodeRecall": 0.788
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 4.192,
+            "honestFlaggedShare": 0.916,
+            "episodeRecall": 0.664
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.798,
+            "honestFlaggedShare": 0.72,
+            "episodeRecall": 0.4886666666666667
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.634,
+            "honestFlaggedShare": 0.384,
+            "episodeRecall": 0.30333333333333334
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.16,
+            "honestFlaggedShare": 0.126,
+            "episodeRecall": 0.19133333333333333
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.002,
+            "honestFlaggedShare": 0.002,
+            "episodeRecall": 0.06333333333333334
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.01
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.494,
+            "honestFlaggedShare": 0.99,
+            "episodeRecall": 0.9666666666666667
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 4.25,
+            "honestFlaggedShare": 0.986,
+            "episodeRecall": 0.944
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.848,
+            "honestFlaggedShare": 0.968,
+            "episodeRecall": 0.9033333333333333
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 3.384,
+            "honestFlaggedShare": 0.938,
+            "episodeRecall": 0.8566666666666667
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.686,
+            "honestFlaggedShare": 0.868,
+            "episodeRecall": 0.7826666666666666
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 2.028,
+            "honestFlaggedShare": 0.774,
+            "episodeRecall": 0.7133333333333334
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 1.124,
+            "honestFlaggedShare": 0.526,
+            "episodeRecall": 0.548
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.618,
+            "honestFlaggedShare": 0.328,
+            "episodeRecall": 0.388
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.06,
+            "honestFlaggedShare": 0.052,
+            "episodeRecall": 0.15066666666666667
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.6048231690336954,
+        "recallPersonalAtFixedFA": 0.6712684365781711,
+        "faDiff": {
+          "mean": -1.6029480000000003,
+          "lo": -2.068,
+          "hi": -0.828
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.374,
+          "honestFlaggedShare": 0.742,
+          "episodeRecall": 0.47733333333333333
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 3.268,
+          "honestFlaggedShare": 0.948,
+          "episodeRecall": 0.874
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 16.26,
+            "honestFlaggedShare": 0.972,
+            "episodeRecall": 0.802
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.516,
+            "honestFlaggedShare": 0.914,
+            "episodeRecall": 0.668
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.374,
+            "honestFlaggedShare": 0.742,
+            "episodeRecall": 0.47733333333333333
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.524,
+            "honestFlaggedShare": 0.362,
+            "episodeRecall": 0.292
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.146,
+            "honestFlaggedShare": 0.112,
+            "episodeRecall": 0.17466666666666666
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.008,
+            "honestFlaggedShare": 0.008,
+            "episodeRecall": 0.058666666666666666
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.01
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.454,
+            "honestFlaggedShare": 0.988,
+            "episodeRecall": 0.9746666666666667
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 4.14,
+            "honestFlaggedShare": 0.978,
+            "episodeRecall": 0.9486666666666667
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.754,
+            "honestFlaggedShare": 0.97,
+            "episodeRecall": 0.9186666666666666
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 3.268,
+            "honestFlaggedShare": 0.948,
+            "episodeRecall": 0.874
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.58,
+            "honestFlaggedShare": 0.882,
+            "episodeRecall": 0.8113333333333334
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.926,
+            "honestFlaggedShare": 0.758,
+            "episodeRecall": 0.7326666666666667
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 1.052,
+            "honestFlaggedShare": 0.496,
+            "episodeRecall": 0.5546666666666666
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.51,
+            "honestFlaggedShare": 0.296,
+            "episodeRecall": 0.388
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.074,
+            "honestFlaggedShare": 0.06,
+            "episodeRecall": 0.15666666666666668
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.6459246809835045,
+        "recallPersonalAtFixedFA": 0.6202456140350877,
+        "faDiff": {
+          "mean": -1.894806,
+          "lo": -2.05,
+          "hi": -1.748
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.522,
+          "honestFlaggedShare": 0.716,
+          "episodeRecall": 0.4673333333333333
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 3.354,
+          "honestFlaggedShare": 0.948,
+          "episodeRecall": 0.8726666666666667
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 15.746,
+            "honestFlaggedShare": 0.992,
+            "episodeRecall": 0.7993333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 4.414,
+            "honestFlaggedShare": 0.926,
+            "episodeRecall": 0.6686666666666666
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.522,
+            "honestFlaggedShare": 0.716,
+            "episodeRecall": 0.4673333333333333
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.562,
+            "honestFlaggedShare": 0.346,
+            "episodeRecall": 0.2866666666666667
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.144,
+            "honestFlaggedShare": 0.12,
+            "episodeRecall": 0.188
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.014,
+            "honestFlaggedShare": 0.01,
+            "episodeRecall": 0.06733333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.011333333333333334
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.588,
+            "honestFlaggedShare": 0.992,
+            "episodeRecall": 0.9666666666666667
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 4.306,
+            "honestFlaggedShare": 0.982,
+            "episodeRecall": 0.946
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.904,
+            "honestFlaggedShare": 0.964,
+            "episodeRecall": 0.916
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 3.354,
+            "honestFlaggedShare": 0.948,
+            "episodeRecall": 0.8726666666666667
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.652,
+            "honestFlaggedShare": 0.888,
+            "episodeRecall": 0.792
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.978,
+            "honestFlaggedShare": 0.766,
+            "episodeRecall": 0.7246666666666667
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 1.044,
+            "honestFlaggedShare": 0.472,
+            "episodeRecall": 0.5486666666666666
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.518,
+            "honestFlaggedShare": 0.292,
+            "episodeRecall": 0.37666666666666665
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.05,
+            "honestFlaggedShare": 0.048,
+            "episodeRecall": 0.146
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.5948722913785155,
+        "recallPersonalAtFixedFA": 0.638739471805853,
+        "faDiff": {
+          "mean": -1.8384800000000012,
+          "lo": -2.042,
+          "hi": -1.566
+        }
+      }
+    ],
+    "restless-honest": [
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 3.532,
+          "honestFlaggedShare": 0.902,
+          "episodeRecall": 0.4806666666666667
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 5.65,
+          "honestFlaggedShare": 0.874,
+          "episodeRecall": 0.7573333333333333
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 23.756,
+            "honestFlaggedShare": 1,
+            "episodeRecall": 0.7866666666666666
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 8.558,
+            "honestFlaggedShare": 0.99,
+            "episodeRecall": 0.6806666666666666
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 3.532,
+            "honestFlaggedShare": 0.902,
+            "episodeRecall": 0.4806666666666667
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 1.348,
+            "honestFlaggedShare": 0.562,
+            "episodeRecall": 0.30733333333333335
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.452,
+            "honestFlaggedShare": 0.25,
+            "episodeRecall": 0.19
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.03,
+            "honestFlaggedShare": 0.024,
+            "episodeRecall": 0.074
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.002,
+            "honestFlaggedShare": 0.002,
+            "episodeRecall": 0.018
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.0006666666666666666
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 7.896,
+            "honestFlaggedShare": 0.968,
+            "episodeRecall": 0.908
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 7.24,
+            "honestFlaggedShare": 0.934,
+            "episodeRecall": 0.8673333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 6.454,
+            "honestFlaggedShare": 0.904,
+            "episodeRecall": 0.81
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 5.65,
+            "honestFlaggedShare": 0.874,
+            "episodeRecall": 0.7573333333333333
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 4.472,
+            "honestFlaggedShare": 0.836,
+            "episodeRecall": 0.6786666666666666
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 3.364,
+            "honestFlaggedShare": 0.778,
+            "episodeRecall": 0.6073333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 1.886,
+            "honestFlaggedShare": 0.526,
+            "episodeRecall": 0.4513333333333333
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 1.03,
+            "honestFlaggedShare": 0.348,
+            "episodeRecall": 0.3233333333333333
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.116,
+            "honestFlaggedShare": 0.09,
+            "episodeRecall": 0.12666666666666668
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.5649484016447804,
+        "recallPersonalAtFixedFA": 0.6181492178098675,
+        "faDiff": {
+          "mean": -2.1130959999999974,
+          "lo": -2.728,
+          "hi": -1.356
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 3.382,
+          "honestFlaggedShare": 0.902,
+          "episodeRecall": 0.48933333333333334
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 5.604,
+          "honestFlaggedShare": 0.902,
+          "episodeRecall": 0.794
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 24.54,
+            "honestFlaggedShare": 1,
+            "episodeRecall": 0.7926666666666666
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 8.718,
+            "honestFlaggedShare": 0.998,
+            "episodeRecall": 0.6666666666666666
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 3.382,
+            "honestFlaggedShare": 0.902,
+            "episodeRecall": 0.48933333333333334
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 1.098,
+            "honestFlaggedShare": 0.564,
+            "episodeRecall": 0.32133333333333336
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.34,
+            "honestFlaggedShare": 0.206,
+            "episodeRecall": 0.19666666666666666
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.034,
+            "honestFlaggedShare": 0.024,
+            "episodeRecall": 0.07333333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.012666666666666666
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.0013333333333333333
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 8,
+            "honestFlaggedShare": 0.966,
+            "episodeRecall": 0.928
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 7.388,
+            "honestFlaggedShare": 0.946,
+            "episodeRecall": 0.8953333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 6.544,
+            "honestFlaggedShare": 0.926,
+            "episodeRecall": 0.8506666666666667
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 5.604,
+            "honestFlaggedShare": 0.902,
+            "episodeRecall": 0.794
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 4.35,
+            "honestFlaggedShare": 0.84,
+            "episodeRecall": 0.7173333333333334
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 3.262,
+            "honestFlaggedShare": 0.76,
+            "episodeRecall": 0.6413333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 1.872,
+            "honestFlaggedShare": 0.546,
+            "episodeRecall": 0.47733333333333333
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 1.026,
+            "honestFlaggedShare": 0.354,
+            "episodeRecall": 0.346
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.138,
+            "honestFlaggedShare": 0.09,
+            "episodeRecall": 0.148
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.5631779110444778,
+        "recallPersonalAtFixedFA": 0.6497156862745098,
+        "faDiff": {
+          "mean": -2.2096520000000015,
+          "lo": -2.822,
+          "hi": -1.398
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 3.56,
+          "honestFlaggedShare": 0.904,
+          "episodeRecall": 0.49866666666666665
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 5.49,
+          "honestFlaggedShare": 0.888,
+          "episodeRecall": 0.7786666666666666
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 24.158,
+            "honestFlaggedShare": 1,
+            "episodeRecall": 0.794
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 8.808,
+            "honestFlaggedShare": 0.992,
+            "episodeRecall": 0.6733333333333333
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 3.56,
+            "honestFlaggedShare": 0.904,
+            "episodeRecall": 0.49866666666666665
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 1.218,
+            "honestFlaggedShare": 0.566,
+            "episodeRecall": 0.322
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.35,
+            "honestFlaggedShare": 0.212,
+            "episodeRecall": 0.186
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.038,
+            "honestFlaggedShare": 0.026,
+            "episodeRecall": 0.056666666666666664
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.004,
+            "honestFlaggedShare": 0.004,
+            "episodeRecall": 0.009333333333333334
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 7.864,
+            "honestFlaggedShare": 0.98,
+            "episodeRecall": 0.918
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 7.224,
+            "honestFlaggedShare": 0.942,
+            "episodeRecall": 0.8826666666666667
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 6.39,
+            "honestFlaggedShare": 0.912,
+            "episodeRecall": 0.834
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 5.49,
+            "honestFlaggedShare": 0.888,
+            "episodeRecall": 0.7786666666666666
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 4.342,
+            "honestFlaggedShare": 0.84,
+            "episodeRecall": 0.7066666666666667
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 3.306,
+            "honestFlaggedShare": 0.754,
+            "episodeRecall": 0.6273333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 1.87,
+            "honestFlaggedShare": 0.554,
+            "episodeRecall": 0.4633333333333333
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.978,
+            "honestFlaggedShare": 0.376,
+            "episodeRecall": 0.326
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.088,
+            "honestFlaggedShare": 0.074,
+            "episodeRecall": 0.14666666666666667
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.562901930894309,
+        "recallPersonalAtFixedFA": 0.6467837837837838,
+        "faDiff": {
+          "mean": -1.9261600000000008,
+          "lo": -2.636,
+          "hi": -0.99
+        }
+      }
+    ],
+    "careful-cheater": [
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.05,
+          "honestFlaggedShare": 0.732,
+          "episodeRecall": 0.098
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.978,
+          "honestFlaggedShare": 0.832,
+          "episodeRecall": 0.2713333333333333
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 20.7,
+            "honestFlaggedShare": 0.988,
+            "episodeRecall": 0.41133333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 5.448,
+            "honestFlaggedShare": 0.924,
+            "episodeRecall": 0.21733333333333332
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.05,
+            "honestFlaggedShare": 0.732,
+            "episodeRecall": 0.098
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.78,
+            "honestFlaggedShare": 0.412,
+            "episodeRecall": 0.032
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.194,
+            "honestFlaggedShare": 0.132,
+            "episodeRecall": 0.008666666666666666
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.01,
+            "honestFlaggedShare": 0.01,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.148,
+            "honestFlaggedShare": 0.954,
+            "episodeRecall": 0.544
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 3.836,
+            "honestFlaggedShare": 0.918,
+            "episodeRecall": 0.44066666666666665
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.426,
+            "honestFlaggedShare": 0.884,
+            "episodeRecall": 0.338
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.978,
+            "honestFlaggedShare": 0.832,
+            "episodeRecall": 0.2713333333333333
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.338,
+            "honestFlaggedShare": 0.76,
+            "episodeRecall": 0.19333333333333333
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.75,
+            "honestFlaggedShare": 0.676,
+            "episodeRecall": 0.11733333333333333
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.956,
+            "honestFlaggedShare": 0.454,
+            "episodeRecall": 0.054
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.526,
+            "honestFlaggedShare": 0.28,
+            "episodeRecall": 0.024666666666666667
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.054,
+            "honestFlaggedShare": 0.046,
+            "episodeRecall": 0.002
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.13059015106925642,
+        "recallPersonalAtFixedFA": 0.15610884353741494,
+        "faDiff": {
+          "mean": -0.9406760000000006,
+          "lo": -1.47,
+          "hi": -0.19
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.596,
+          "honestFlaggedShare": 0.75,
+          "episodeRecall": 0.086
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.796,
+          "honestFlaggedShare": 0.84,
+          "episodeRecall": 0.26466666666666666
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 20.366,
+            "honestFlaggedShare": 0.978,
+            "episodeRecall": 0.39666666666666667
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 4.634,
+            "honestFlaggedShare": 0.928,
+            "episodeRecall": 0.18733333333333332
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.596,
+            "honestFlaggedShare": 0.75,
+            "episodeRecall": 0.086
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.582,
+            "honestFlaggedShare": 0.388,
+            "episodeRecall": 0.037333333333333336
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.166,
+            "honestFlaggedShare": 0.13,
+            "episodeRecall": 0.014666666666666666
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.012,
+            "honestFlaggedShare": 0.012,
+            "episodeRecall": 0.0006666666666666666
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.002,
+            "honestFlaggedShare": 0.002,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.062,
+            "honestFlaggedShare": 0.948,
+            "episodeRecall": 0.554
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 3.668,
+            "honestFlaggedShare": 0.912,
+            "episodeRecall": 0.44266666666666665
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.27,
+            "honestFlaggedShare": 0.882,
+            "episodeRecall": 0.35
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.796,
+            "honestFlaggedShare": 0.84,
+            "episodeRecall": 0.26466666666666666
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.164,
+            "honestFlaggedShare": 0.766,
+            "episodeRecall": 0.17933333333333334
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.624,
+            "honestFlaggedShare": 0.658,
+            "episodeRecall": 0.11266666666666666
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.898,
+            "honestFlaggedShare": 0.422,
+            "episodeRecall": 0.050666666666666665
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.446,
+            "honestFlaggedShare": 0.262,
+            "episodeRecall": 0.022
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.052,
+            "honestFlaggedShare": 0.046,
+            "episodeRecall": 0
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.1260263331138907,
+        "recallPersonalAtFixedFA": 0.1102754820936639,
+        "faDiff": {
+          "mean": -1.2041039999999985,
+          "lo": -1.434,
+          "hi": -0.964
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.292,
+          "honestFlaggedShare": 0.742,
+          "episodeRecall": 0.096
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.766,
+          "honestFlaggedShare": 0.81,
+          "episodeRecall": 0.2813333333333333
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 21.338,
+            "honestFlaggedShare": 0.992,
+            "episodeRecall": 0.376
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 6.542,
+            "honestFlaggedShare": 0.94,
+            "episodeRecall": 0.19266666666666668
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.292,
+            "honestFlaggedShare": 0.742,
+            "episodeRecall": 0.096
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.776,
+            "honestFlaggedShare": 0.37,
+            "episodeRecall": 0.034666666666666665
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.212,
+            "honestFlaggedShare": 0.136,
+            "episodeRecall": 0.010666666666666666
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.032,
+            "honestFlaggedShare": 0.024,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 4.068,
+            "honestFlaggedShare": 0.952,
+            "episodeRecall": 0.558
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 3.654,
+            "honestFlaggedShare": 0.882,
+            "episodeRecall": 0.4513333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 3.258,
+            "honestFlaggedShare": 0.84,
+            "episodeRecall": 0.36133333333333334
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.766,
+            "honestFlaggedShare": 0.81,
+            "episodeRecall": 0.2813333333333333
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 2.168,
+            "honestFlaggedShare": 0.74,
+            "episodeRecall": 0.20333333333333334
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 1.604,
+            "honestFlaggedShare": 0.63,
+            "episodeRecall": 0.13266666666666665
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.868,
+            "honestFlaggedShare": 0.392,
+            "episodeRecall": 0.062
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.434,
+            "honestFlaggedShare": 0.246,
+            "episodeRecall": 0.027333333333333334
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0.038,
+            "honestFlaggedShare": 0.036,
+            "episodeRecall": 0.0006666666666666666
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.10678117647058824,
+        "recallPersonalAtFixedFA": 0.21950724637681157,
+        "faDiff": {
+          "mean": -0.4847739999999994,
+          "lo": -1.04,
+          "hi": 0.198
+        }
+      }
+    ],
+    "dirty-calibration": [
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.704,
+          "honestFlaggedShare": 0.732,
+          "episodeRecall": 0.48733333333333334
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.058,
+          "honestFlaggedShare": 0.476,
+          "episodeRecall": 0.4046666666666667
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 18.796,
+            "honestFlaggedShare": 0.988,
+            "episodeRecall": 0.8013333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 5.712,
+            "honestFlaggedShare": 0.932,
+            "episodeRecall": 0.6693333333333333
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.704,
+            "honestFlaggedShare": 0.732,
+            "episodeRecall": 0.48733333333333334
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.616,
+            "honestFlaggedShare": 0.384,
+            "episodeRecall": 0.322
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.188,
+            "honestFlaggedShare": 0.142,
+            "episodeRecall": 0.19066666666666668
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.012,
+            "honestFlaggedShare": 0.01,
+            "episodeRecall": 0.076
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.012
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 2.788,
+            "honestFlaggedShare": 0.842,
+            "episodeRecall": 0.5206666666666667
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 2.168,
+            "honestFlaggedShare": 0.75,
+            "episodeRecall": 0.47733333333333333
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 1.61,
+            "honestFlaggedShare": 0.614,
+            "episodeRecall": 0.43866666666666665
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.058,
+            "honestFlaggedShare": 0.476,
+            "episodeRecall": 0.4046666666666667
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 0.602,
+            "honestFlaggedShare": 0.31,
+            "episodeRecall": 0.35733333333333334
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 0.312,
+            "honestFlaggedShare": 0.17,
+            "episodeRecall": 0.302
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.086,
+            "honestFlaggedShare": 0.054,
+            "episodeRecall": 0.19466666666666665
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.024,
+            "honestFlaggedShare": 0.02,
+            "episodeRecall": 0.12466666666666666
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.035333333333333335
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.38916666666666666,
+        "recallPersonalAtFixedFA": 0.44518040621266425,
+        "faDiff": {
+          "mean": 0.6441880000000009,
+          "lo": 0.378,
+          "hi": 0.984
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.756,
+          "honestFlaggedShare": 0.726,
+          "episodeRecall": 0.5046666666666667
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 1.158,
+          "honestFlaggedShare": 0.546,
+          "episodeRecall": 0.398
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 17.39,
+            "honestFlaggedShare": 0.98,
+            "episodeRecall": 0.8166666666666667
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 4.796,
+            "honestFlaggedShare": 0.934,
+            "episodeRecall": 0.6953333333333334
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.756,
+            "honestFlaggedShare": 0.726,
+            "episodeRecall": 0.5046666666666667
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.614,
+            "honestFlaggedShare": 0.392,
+            "episodeRecall": 0.334
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.174,
+            "honestFlaggedShare": 0.138,
+            "episodeRecall": 0.20266666666666666
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.008,
+            "honestFlaggedShare": 0.006,
+            "episodeRecall": 0.08066666666666666
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.017333333333333333
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 2.954,
+            "honestFlaggedShare": 0.85,
+            "episodeRecall": 0.5086666666666667
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 2.34,
+            "honestFlaggedShare": 0.792,
+            "episodeRecall": 0.4706666666666667
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 1.716,
+            "honestFlaggedShare": 0.688,
+            "episodeRecall": 0.434
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 1.158,
+            "honestFlaggedShare": 0.546,
+            "episodeRecall": 0.398
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 0.644,
+            "honestFlaggedShare": 0.36,
+            "episodeRecall": 0.34933333333333333
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 0.354,
+            "honestFlaggedShare": 0.218,
+            "episodeRecall": 0.31333333333333335
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.094,
+            "honestFlaggedShare": 0.062,
+            "episodeRecall": 0.20066666666666666
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.02,
+            "honestFlaggedShare": 0.012,
+            "episodeRecall": 0.11733333333333333
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.027333333333333334
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.4152983070636311,
+        "recallPersonalAtFixedFA": 0.43635042735042734,
+        "faDiff": {
+          "mean": 0.6032420000000008,
+          "lo": 0.306,
+          "hi": 0.982
+        }
+      },
+      {
+        "fixed": {
+          "setting": 1,
+          "falseAlertsPerHour": 2.354,
+          "honestFlaggedShare": 0.724,
+          "episodeRecall": 0.4846666666666667
+        },
+        "personal": {
+          "setting": 1,
+          "falseAlertsPerHour": 0.994,
+          "honestFlaggedShare": 0.494,
+          "episodeRecall": 0.4053333333333333
+        },
+        "fixedCurve": [
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 19.564,
+            "honestFlaggedShare": 0.984,
+            "episodeRecall": 0.8086666666666666
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 6.784,
+            "honestFlaggedShare": 0.924,
+            "episodeRecall": 0.6853333333333333
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 2.354,
+            "honestFlaggedShare": 0.724,
+            "episodeRecall": 0.4846666666666667
+          },
+          {
+            "setting": 1.2,
+            "falseAlertsPerHour": 0.828,
+            "honestFlaggedShare": 0.402,
+            "episodeRecall": 0.31066666666666665
+          },
+          {
+            "setting": 1.4,
+            "falseAlertsPerHour": 0.234,
+            "honestFlaggedShare": 0.122,
+            "episodeRecall": 0.18933333333333333
+          },
+          {
+            "setting": 1.7,
+            "falseAlertsPerHour": 0.02,
+            "honestFlaggedShare": 0.014,
+            "episodeRecall": 0.068
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.012
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          },
+          {
+            "setting": 3,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0
+          }
+        ],
+        "personalCurve": [
+          {
+            "setting": 0.4,
+            "falseAlertsPerHour": 2.844,
+            "honestFlaggedShare": 0.834,
+            "episodeRecall": 0.52
+          },
+          {
+            "setting": 0.6,
+            "falseAlertsPerHour": 2.178,
+            "honestFlaggedShare": 0.756,
+            "episodeRecall": 0.4766666666666667
+          },
+          {
+            "setting": 0.8,
+            "falseAlertsPerHour": 1.58,
+            "honestFlaggedShare": 0.656,
+            "episodeRecall": 0.44666666666666666
+          },
+          {
+            "setting": 1,
+            "falseAlertsPerHour": 0.994,
+            "honestFlaggedShare": 0.494,
+            "episodeRecall": 0.4053333333333333
+          },
+          {
+            "setting": 1.25,
+            "falseAlertsPerHour": 0.588,
+            "honestFlaggedShare": 0.312,
+            "episodeRecall": 0.356
+          },
+          {
+            "setting": 1.5,
+            "falseAlertsPerHour": 0.312,
+            "honestFlaggedShare": 0.18,
+            "episodeRecall": 0.304
+          },
+          {
+            "setting": 2,
+            "falseAlertsPerHour": 0.084,
+            "honestFlaggedShare": 0.052,
+            "episodeRecall": 0.19466666666666665
+          },
+          {
+            "setting": 2.5,
+            "falseAlertsPerHour": 0.01,
+            "honestFlaggedShare": 0.01,
+            "episodeRecall": 0.10866666666666666
+          },
+          {
+            "setting": 3.5,
+            "falseAlertsPerHour": 0,
+            "honestFlaggedShare": 0,
+            "episodeRecall": 0.030666666666666665
+          }
+        ],
+        "recallFixedAtPersonalFA": 0.3295945827872433,
+        "recallPersonalAtFixedFA": 0.48811811811811817,
+        "faDiff": {
+          "mean": 1.3711540000000013,
+          "lo": 0.738,
+          "hi": 2.166
+        }
+      }
+    ]
+  }
+}
