@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "prisma:seed": "tsx prisma/seed.ts",
     "seed:exams": "tsx prisma/seed-exams.ts",
-    "exam:placement": "tsx prisma/seed-exams.ts"
+    "exam:placement": "tsx prisma/seed-exams.ts",
+    "train:integrity": "tsx scripts/train-integrity.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
