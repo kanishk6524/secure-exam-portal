@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAdminScope } from "@/lib/admin-auth"
+import { recordAudit } from "@/lib/audit"
 
 /** The reviewer's final call on a session: CLEARED (no cheating), FLAGGED (suspected), or null to reopen it. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ sessionId: string }> }) {
@@ -14,5 +15,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ se
   const target = await prisma.examSession.findFirst({ where: { id: sessionId, ...(scope.collegeId ? { exam: { collegeId: scope.collegeId } } : {}) }, select: { id: true } })
   if (!target) return NextResponse.json({ error: "Session not found" }, { status: 404 })
   const session = await prisma.examSession.update({ where: { id: sessionId }, data: { verdict, reviewNote: note, reviewedById: verdict ? scope.session.user.id : null, reviewedAt: verdict ? new Date() : null } })
+  await recordAudit({ action: "session.verdict", actorId: scope.session.user.id, sessionId, details: { verdict } })
   return NextResponse.json({ session })
 }

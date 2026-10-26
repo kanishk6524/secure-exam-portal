@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { Prisma, Role } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { recordAudit } from "@/lib/audit"
 import { relaxedSignup } from "@/lib/signup-mode"
 import { FirebaseAuthError, firebaseConfigured, firebaseSendEmailVerification, firebaseSignInWithPassword, firebaseSignUp } from "@/lib/firebase"
 
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
         profilePhotoUrl: data.profilePhotoUrl ?? null,
       },
     })
+    if (data.role !== Role.STUDENT) await recordAudit({ action: "admin.register", details: { email, role: data.role } })
     return NextResponse.json({ message: "Account created and saved. Local development mode: email verification is skipped, so you can sign in now." }, { status: 201 })
   }
 
@@ -123,6 +125,8 @@ export async function POST(request: Request) {
     console.error("Registration database error", error)
     return NextResponse.json({ error: "Your account could not be saved. Please try registering again with the same email and password." }, { status: 503 })
   }
+
+  if (data.role !== Role.STUDENT) await recordAudit({ action: "admin.register", details: { email, role: data.role } })
 
   // The profile now exists, so a failed email is recoverable with "Resend link" on the login screen.
   try {

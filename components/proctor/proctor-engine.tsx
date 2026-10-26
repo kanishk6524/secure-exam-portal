@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import * as cocoSsd from "@tensorflow-models/coco-ssd"
 import "@tensorflow/tfjs"
 import { createFaceLandmarker } from "@/lib/face-landmarker"
+import { frameFromResult, PassiveLiveness } from "@/lib/liveness"
+import { describePoint, predictScreenPoint } from "@/lib/gaze-mapping"
 import { fixedRuleAnomalous } from "@/lib/fixed-gaze-rule"
 import { envelopeDeviation, extractFeatures, loadBaseline, MODEL_URL, reconstructionError, type GazeBaseline } from "@/lib/gaze-baseline"
 
@@ -35,14 +37,14 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
   const [heightened, setHeightened] = useState(false)
   const isHeightened = () => Date.now() < heightenedUntil.current
 
-  async function emit(type: string, severity: string, confidence?: number, metadata?: Record<string, unknown>) {
+  async function emit(type: string, severity: string, confidence?: number, metadata?: Record<string, unknown>, forceSnapshot = false) {
     const now = Date.now()
-    if (lastIncident.current[type] && now - lastIncident.current[type] < 10_000) return
+    if (!forceSnapshot && lastIncident.current[type] && now - lastIncident.current[type] < 10_000) return
     lastIncident.current[type] = now
-    recentAlerts.current = [...recentAlerts.current.filter((time) => now - time < 300_000), now]
-    if (recentAlerts.current.length >= 3 && !isHeightened()) { heightenedUntil.current = now + 600_000; setHeightened(true) }
+    if (!forceSnapshot) recentAlerts.current = [...recentAlerts.current.filter((time) => now - time < 300_000), now]
+    if (!forceSnapshot && recentAlerts.current.length >= 3 && !isHeightened()) { heightenedUntil.current = now + 600_000; setHeightened(true) }
     // Serious findings carry the webcam frame that triggered them, so a reviewer can see what happened.
-    const snapshot = severity === "HIGH" || severity === "CRITICAL" ? captureSnapshot(videoRef.current) : undefined
+    const snapshot = forceSnapshot || severity === "HIGH" || severity === "CRITICAL" ? captureSnapshot(videoRef.current) : undefined
     await fetch(`/api/exams/session/${sessionId}/incident`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, severity, confidence, metadata, snapshot }) }).catch(() => undefined)
   }
 
@@ -57,6 +59,8 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
     let objectModel: cocoSsd.ObjectDetection | undefined
     let vad: { pause: () => void; destroy: () => void } | undefined
     let baseline: GazeBaseline | null = null
+    const passive = new PassiveLiveness()
+    let lastScreenGaze: Record<string, number | string> = {}
     let autoencoder: import("@tensorflow/tfjs").LayersModel | undefined
     async function start() {
       try {
@@ -110,6 +114,12 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
           const count = result.faceLandmarks.length
           if (count === 0) { noFaceChecks.current += 1; if (noFaceChecks.current > 5) await emit("NO_FACE", "HIGH", undefined, { consecutiveChecks: noFaceChecks.current }) } else noFaceChecks.current = 0
           if (count > 1) { multipleFaceChecks.current += 1; if (multipleFaceChecks.current > 2) await emit("MULTIPLE_FACES", "HIGH", undefined, { faceCount: count }) } else multipleFaceChecks.current = 0
+          // Anti-spoofing: a live face blinks and changes expression; a photo or frozen picture does not.
+          const liveFrame = count === 1 ? frameFromResult(result, Date.now()) : null
+          if (liveFrame) {
+            const spoof = passive.update(liveFrame)
+            if (spoof) await emit("LIVENESS_FAILED", "HIGH", 0.6, { reason: spoof, method: "passive-liveness" })
+          } else passive.reset()
           const matrix = result.facialTransformationMatrixes?.[0]?.data
           if (matrix && count === 1) {
             const yaw = Math.atan2(matrix[2], matrix[10]) * 180 / Math.PI
@@ -132,11 +142,16 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
               const { deviation, feature } = envelopeDeviation(baseline, features)
               const aeError = autoencoder ? reconstructionError(await import("@tensorflow/tfjs"), autoencoder, baseline, features) : null
               personal = { deviation, feature, aeError, aeAnomaly: aeError !== null && aeError > baseline.aeThreshold }
+              // Where on the screen the candidate seems to be looking. Recorded as evidence for the reviewer only.
+              if (baseline.screenMap) {
+                const point = predictScreenPoint(baseline.screenMap, features)
+                lastScreenGaze = { screenX: Math.round(point.x), screenY: Math.round(point.y), screenZone: describePoint(baseline.screenMap, point).zone, screenMapErrorPct: Math.round(baseline.screenMap.error) }
+              }
             }
             const anomalous = personal ? personal.deviation > 0 || personal.aeAnomaly : fixed.anomalous
             if (anomalous) {
               gazeChecks.current += 1
-              if (gazeChecks.current > (isHeightened() ? 4 : 8)) await emit("GAZE_AWAY", "MEDIUM", personal ? Math.min(1, Math.max(personal.deviation / 3, personal.aeError && baseline ? personal.aeError / (baseline.aeThreshold * 3) : 0)) : Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { method: personal ? "personal-baseline" : "fixed-threshold", yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current, ...(personal ?? {}) })
+              if (gazeChecks.current > (isHeightened() ? 4 : 8)) await emit("GAZE_AWAY", "MEDIUM", personal ? Math.min(1, Math.max(personal.deviation / 3, personal.aeError && baseline ? personal.aeError / (baseline.aeThreshold * 3) : 0)) : Math.min(1, (Math.abs(yaw) + Math.abs(pitch)) / 90), { method: personal ? "personal-baseline" : "fixed-threshold", yaw, pitch, eyesSideways, eyesDown, headTurned, sustainedChecks: gazeChecks.current, ...(personal ?? {}), ...(personal ? lastScreenGaze : {}) })
             } else if (features || !baseline) gazeChecks.current = 0
           }
           // Identity: the face must match the pre-exam photo for the whole exam: checked 5 s in, then every 15 s (8 s in enhanced mode).
@@ -218,6 +233,14 @@ export default function ProctorEngine({ sessionId, retryKey = 0, onCameraStatus 
     void start()
     return () => { cancelled = true; if (faceTimer) clearInterval(faceTimer); if (objectTimer) clearInterval(objectTimer); if (frameTimer) clearInterval(frameTimer); if (motionTimer) clearInterval(motionTimer); vad?.pause(); vad?.destroy(); stream?.getTracks().forEach((track) => track.stop()) }
   }, [sessionId, retryKey])
+
+  // "Show me your desk": the exam screen fires this event when the invigilator asks. Three pictures, four seconds apart, are saved as evidence.
+  useEffect(() => {
+    const timers: number[] = []
+    const run = () => { [0, 4000, 8000].forEach((delay, index) => timers.push(window.setTimeout(() => void emit("DESK_CHECK", "LOW", undefined, { picture: index + 1, of: 3 }, true), delay))) }
+    window.addEventListener("proctor:deskcheck", run)
+    return () => { window.removeEventListener("proctor:deskcheck", run); timers.forEach((timer) => window.clearTimeout(timer)) }
+  }, [sessionId])
 
   return <>{permissionError && <div className="fixed bottom-4 left-4 z-50 rounded bg-yellow-100 p-3 text-sm text-yellow-900">Proctoring warning: {permissionError}</div>}<div className="pointer-events-none fixed bottom-3 left-3 z-40 overflow-hidden rounded-md border-2 border-white bg-black shadow-lg"><video ref={videoRef} muted playsInline className="h-24 w-32 -scale-x-100 object-cover" /><span className="absolute left-1 top-1 flex items-center gap-1 rounded bg-black/60 px-1.5 text-[10px] font-semibold text-white"><span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />LIVE</span>{heightened && <span className="absolute bottom-1 left-1 rounded bg-amber-500 px-1.5 text-[10px] font-semibold text-black">Enhanced monitoring</span>}</div></>
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { createFaceLandmarker, describeError } from "@/lib/face-landmarker"
 import { extractFeatures, fitBaseline, saveBaseline, trainAutoencoder, type Features } from "@/lib/gaze-baseline"
+import { fitScreenMap, type LabelledSample } from "@/lib/gaze-mapping"
 
 type Props = { onDone: () => void }
 // Where the candidate is asked to look. Together they cover the whole screen, i.e. everywhere a person reading the exam looks.
@@ -39,6 +40,7 @@ export default function GazeCalibration({ onDone }: Props) {
         setMessage("Loading the eye-tracking model...")
         landmarker = await createFaceLandmarker({ numFaces: 1, blendshapes: true })
         const samples: Features[] = []
+        const labelled: LabelledSample[] = []
         for (let index = 0; index < TARGETS.length; index += 1) {
           if (cancelled) return
           setStep(index)
@@ -47,7 +49,7 @@ export default function GazeCalibration({ onDone }: Props) {
           const until = Date.now() + COLLECT_MS
           while (Date.now() < until && !cancelled) {
             const features = videoRef.current ? extractFeatures(landmarker.detectForVideo(videoRef.current, performance.now())) : null
-            if (features) samples.push(features)
+            if (features) { samples.push(features); labelled.push({ features, x: TARGETS[index].x, y: TARGETS[index].y, target: index === 5 ? 0 : index }) }
             await new Promise((resolve) => setTimeout(resolve, 100))
           }
         }
@@ -62,9 +64,10 @@ export default function GazeCalibration({ onDone }: Props) {
         } catch (trainError) {
           console.warn("Autoencoder training failed; using the personal range only.", trainError)
         }
+        try { baseline = { ...baseline, screenMap: fitScreenMap(labelled) } } catch (mapError) { console.warn("Screen-position mapping failed; continuing without it.", mapError) }
         saveBaseline(baseline)
         const range = baseline.lo.map((low, index) => `${low.toFixed(index < 2 ? 0 : 2)} to ${baseline.hi[index].toFixed(index < 2 ? 0 : 2)}`)
-        setSummary(`Personal baseline created from ${baseline.samples} frames${baseline.aeTrained ? " and a neural network trained on them" : ""}. Normal head yaw: ${range[0]} degrees, pitch: ${range[1]} degrees.`)
+        setSummary(`Personal baseline created from ${baseline.samples} frames${baseline.aeTrained ? " and a neural network trained on them" : ""}. Normal head yaw: ${range[0]} degrees, pitch: ${range[1]} degrees.${baseline.screenMap ? ` Screen-position estimate learned (typical error about ${Math.round(baseline.screenMap.error)}% of the screen).` : ""}`)
         setMessage("Calibration complete")
       } catch (calibrationError) {
         if (!cancelled) setError(describeError(calibrationError) || "Calibration failed")

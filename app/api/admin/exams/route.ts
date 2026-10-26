@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { ExamStatus } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getAdminScope } from "@/lib/admin-auth"
+import { recordAudit } from "@/lib/audit"
 
 export async function GET() {
   const scope = await getAdminScope()
@@ -22,5 +23,6 @@ export async function POST(request: Request) {
   // College admins can only create exams for their own college.
   const collegeId = scope.collegeId ?? (body.collegeId || null)
   const exam = await prisma.exam.create({ data: { title: body.title, description: body.description || null, durationMins: Number(body.durationMins), startTime, endTime, status: body.status ?? ExamStatus.DRAFT, collegeId, subjects: { create: (body.subjects ?? []).map((subject: { name: string }) => ({ name: subject.name })) } }, include: { subjects: true } })
+  await recordAudit({ action: "exam.create", actorId: scope.session.user.id, details: { examId: exam.id, title: exam.title } })
   return NextResponse.json({ exam }, { status: 201 })
 }

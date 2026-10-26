@@ -13,6 +13,8 @@ import AdminCollusion from "./admin-collusion"
 import AdminAiFlags from "./admin-ai-flags"
 import AdminSettings from "./admin-settings"
 import AdminHome from "./admin-home"
+import AdminAudit from "./admin-audit"
+import AdminAppeals from "./admin-appeals"
 
 interface AdminDashboardProps {
   onLogout: () => void
@@ -42,6 +44,10 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
         return <AdminCollusion />
       case "reports":
         return <AdminReports />
+      case "appeals":
+        return <AdminAppeals />
+      case "audit":
+        return <AdminAudit />
       case "settings":
         return <AdminSettings />
       default:
@@ -138,6 +144,24 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
             >
               <BarChart3 className="w-5 h-5 mr-3" />
               Reports
+            </button>
+            <button
+              onClick={() => setActiveTab("appeals")}
+              className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-md ${
+                activeTab === "appeals" ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <ClipboardCheck className="w-5 h-5 mr-3" />
+              Appeals
+            </button>
+            <button
+              onClick={() => setActiveTab("audit")}
+              className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-md ${
+                activeTab === "audit" ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Shield className="w-5 h-5 mr-3" />
+              Audit Log
             </button>
             <button
               onClick={() => setActiveTab("settings")}

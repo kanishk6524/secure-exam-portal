@@ -3,6 +3,7 @@
 // person's normal range, or that their own model cannot reconstruct, is treated as an anomaly. Nothing here is a
 // fixed "one threshold for everybody" rule.
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision"
+import type { ScreenMap } from "./gaze-mapping"
 
 export const FEATURE_NAMES = ["head yaw", "head pitch", "eye horizontal", "eye vertical"] as const
 export type Features = [number, number, number, number]
@@ -19,6 +20,7 @@ export type GazeBaseline = {
   scale: number[] // per-feature scale used to normalise features for the autoencoder
   aeThreshold: number // reconstruction error above this is an anomaly (mean + 3 sigma of the training error)
   aeTrained: boolean
+  screenMap?: ScreenMap | null // where on the screen the candidate looks (learned from the calibration dots), if it could be fitted
 }
 
 export const BASELINE_KEY = "gazeBaseline"

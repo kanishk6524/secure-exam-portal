@@ -10,6 +10,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ses
   const examSession = await prisma.examSession.findFirst({ where: { id: sessionId, userId: session.user.id } })
   if (!examSession) return NextResponse.json({ error: "Session not found" }, { status: 404 })
   if (examSession.status !== "IN_PROGRESS") return NextResponse.json({ error: "This exam is no longer accepting answers" }, { status: 409 })
+  if (examSession.pausedAt) return NextResponse.json({ error: "The exam is paused by the invigilator" }, { status: 409 })
   if (new Date() > examSession.serverEndsAt) return NextResponse.json({ error: "The exam deadline has passed" }, { status: 409 })
   const questionId = String(body.questionId ?? "")
   if (!(examSession.questionOrder as string[]).includes(questionId)) return NextResponse.json({ error: "Question is not part of this session" }, { status: 400 })

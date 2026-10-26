@@ -3,7 +3,9 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { seededShuffle } from "@/lib/exam-engine"
 import { emitIncident } from "@/lib/realtime"
+import { CONSENT_VERSION } from "@/lib/consent"
 import { requireSecureClient } from "@/lib/secure-client"
+import { recordAudit } from "@/lib/audit"
 
 export async function POST(request: Request, { params }: { params: Promise<{ examId: string }> }) {
   const session = await auth()
@@ -15,6 +17,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ exa
   // An in-progress attempt can always be resumed (its own end time still applies).
   if (existing?.status === "IN_PROGRESS") return NextResponse.json({ sessionId: existing.id, questionOrder: existing.questionOrder, serverEndsAt: existing.serverEndsAt.toISOString(), status: existing.status })
   if (existing) return NextResponse.json({ error: "This exam session is already submitted", status: existing.status }, { status: 409 })
+
+  // A new attempt needs the candidate's recorded consent to the current privacy notice.
+  const body = await request.json().catch(() => ({}))
+  if (body?.consentVersion !== CONSENT_VERSION) return NextResponse.json({ error: "Please read and accept the privacy notice before starting the exam." }, { status: 400 })
 
   const exam = await prisma.exam.findUnique({ where: { id: examId }, include: { subjects: { include: { questions: { select: { id: true } } } } } })
   if (!exam) return NextResponse.json({ error: "Exam not found" }, { status: 404 })
@@ -31,7 +37,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ exa
   const startedAt = now
   // The attempt can never outlive the exam window.
   const serverEndsAt = new Date(Math.min(startedAt.getTime() + exam.durationMins * 60 * 1000, exam.endTime.getTime()))
-  const created = await prisma.examSession.create({ data: { examId, userId: session.user.id, questionOrder: seededShuffle(questionIds, `${session.user.id}:${examId}:${startedAt.toISOString()}`), startedAt, serverEndsAt } })
+  const created = await prisma.examSession.create({ data: { examId, userId: session.user.id, questionOrder: seededShuffle(questionIds, `${session.user.id}:${examId}:${startedAt.toISOString()}`), startedAt, serverEndsAt, consentAt: now, consentVersion: CONSENT_VERSION } })
+
+  await recordAudit({ action: "session.start", actorId: session.user.id, sessionId: created.id, details: { examId, consentVersion: CONSENT_VERSION } })
 
   // Students who skipped the registration selfie cannot be identity-checked: tell the invigilator.
   if (!Array.isArray(student?.faceEmbedding)) {

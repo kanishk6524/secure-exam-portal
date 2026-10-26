@@ -33,6 +33,7 @@ export async function GET(request: Request) {
     const windowMs = Math.max(60_000, session.serverEndsAt.getTime() - session.startedAt.getTime())
     const timeline = new Array(BUCKETS).fill(0)
     for (const incident of session.incidents) {
+      if (incident.type === "DESK_CHECK") continue // requested by the invigilator, not a flag
       const meta = (incident.metadata ?? {}) as Record<string, unknown>
       switch (incident.type) {
         case "GAZE_AWAY": {
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
         case "AUDIO_ANOMALY": counts.sound += 1; break
         case "SURROUNDING_MOVEMENT": counts.movement += 1; break
         case "TAB_SWITCH": case "FULLSCREEN_EXIT": case "BACKGROUND_APP": counts.tabs += 1; break
-        case "NO_FACE": case "CAMERA_LOST": case "VIRTUAL_CAMERA": case "SIDE_CAMERA_LOST": counts.camera += 1; break
+        case "NO_FACE": case "CAMERA_LOST": case "VIRTUAL_CAMERA": case "SIDE_CAMERA_LOST": case "LIVENESS_FAILED": counts.camera += 1; break
       }
       const offset = incident.createdAt.getTime() - session.startedAt.getTime()
       timeline[Math.min(BUCKETS - 1, Math.max(0, Math.floor((offset / windowMs) * BUCKETS)))] += 1

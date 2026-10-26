@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAdminScope } from "@/lib/admin-auth"
+import { recordAudit } from "@/lib/audit"
 
 class SubjectInUseError extends Error {}
 
@@ -32,6 +33,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }
       return tx.exam.update({ where: { id }, data: { title: body.title, description: body.description || null, durationMins: Number(body.durationMins), startTime: new Date(body.startTime), endTime: new Date(body.endTime), status: body.status }, include: { subjects: true } })
     })
+    await recordAudit({ action: "exam.update", actorId: scope.session.user.id, details: { examId: id, title: exam.title, status: exam.status } })
     return NextResponse.json({ exam })
   } catch (error) {
     if (error instanceof SubjectInUseError) return NextResponse.json({ error: error.message }, { status: 409 })
@@ -53,11 +55,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   await prisma.$transaction([
     prisma.incident.deleteMany({ where: { sessionId: { in: sessionIds } } }),
     prisma.answer.deleteMany({ where: { sessionId: { in: sessionIds } } }),
-    prisma.auditLog.deleteMany({ where: { sessionId: { in: sessionIds } } }),
+    prisma.appeal.deleteMany({ where: { sessionId: { in: sessionIds } } }), // the audit log is never deleted: it must stay tamper-evident
     prisma.examSession.deleteMany({ where: { examId: id } }),
     prisma.question.deleteMany({ where: { subjectId: { in: subjectIds } } }),
     prisma.subject.deleteMany({ where: { examId: id } }),
     prisma.exam.delete({ where: { id } }),
   ])
+  await recordAudit({ action: "exam.delete", actorId: scope.session.user.id, details: { examId: id, title: exam.title, sessions: sessionIds.length } })
   return NextResponse.json({ success: true })
 }

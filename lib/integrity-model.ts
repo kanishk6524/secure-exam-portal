@@ -30,7 +30,7 @@ const GROUPS: Record<Exclude<FeatureName, "burst" | "fastCorrect">, string[]> = 
   face: ["NO_FACE", "MULTIPLE_FACES", "SURROUNDING_MOVEMENT"],
   object: ["OBJECT_DETECTED"],
   identity: ["IDENTITY_MISMATCH"],
-  tamper: ["VIRTUAL_CAMERA", "CLIENT_INTEGRITY", "MULTIPLE_MONITORS", "CAMERA_LOST", "SIDE_CAMERA_LOST"],
+  tamper: ["VIRTUAL_CAMERA", "CLIENT_INTEGRITY", "MULTIPLE_MONITORS", "CAMERA_LOST", "SIDE_CAMERA_LOST", "LIVENESS_FAILED", "INPUT_ANOMALY"],
   audio: ["AUDIO_ANOMALY"],
 }
 const FAST_ANSWER_MS = 8000
@@ -41,7 +41,8 @@ const time = (value: Date | string) => new Date(value).getTime()
 export function extractIntegrityFeatures(input: IntegrityInput): Record<FeatureName, number> {
   const counts = Object.fromEntries(Object.entries(GROUPS).map(([name, types]) => [name, input.incidents.filter((incident) => types.includes(incident.type)).length])) as Record<keyof typeof GROUPS, number>
   // Burst: the most alerts inside any 2-minute window (a person who is suddenly doing many suspicious things).
-  const times = input.incidents.map((incident) => time(incident.createdAt)).sort((a, b) => a - b)
+  // Desk-check pictures are requested by the invigilator, not caused by the candidate, so they never count as a burst.
+  const times = input.incidents.filter((incident) => incident.type !== "DESK_CHECK").map((incident) => time(incident.createdAt)).sort((a, b) => a - b)
   let burst = 0
   for (let start = 0, end = 0; end < times.length; end += 1) {
     while (times[end] - times[start] > 120_000) start += 1

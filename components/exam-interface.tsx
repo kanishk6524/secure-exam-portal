@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useExam } from "@/context/exam-context"
 import { useAuth } from "@/context/auth-context"
 import { useStudentRealtime } from "@/lib/socket-client"
+import InvigilatorNotices from "@/components/proctor/invigilator-notices"
+import { useInputBehaviour } from "@/lib/input-behaviour"
+import { Outbox, type AnswerPatch } from "@/lib/save-outbox"
 import { useExamLockdown } from "@/hooks/use-exam-lockdown"
 import dynamic from "next/dynamic"
 import PhonePairing from "@/components/proctor/phone-pairing"
@@ -73,14 +76,31 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   const handlePhoneStatus = useCallback((state: { connected: boolean; required: boolean }) => setPhone((previous) => (previous.connected === state.connected && previous.required === state.required ? previous : state)), [])
   const lastSideLostReport = useRef(0)
   const submitting = useRef(false)
-  const saveQueue = useRef<Promise<unknown>>(Promise.resolve())
+  // Answers waiting to reach the server. They are retried until they succeed, and survive a refresh.
+  const outbox = useRef<Outbox | null>(null)
+  const flushing = useRef(false)
+  const retryTimer = useRef<number | undefined>(undefined)
+  const [pending, setPending] = useState(0)
+  const answersChanged = useRef(0)
   // Always call the latest closures from long-lived callbacks (intervals, queued saves).
   const submitRef = useRef<() => Promise<void>>(async () => undefined)
   const sessionEndedRef = useRef<() => Promise<void>>(async () => undefined)
 
   const currentQuestion = questions[currentIndex]
   const handleBlocked = useCallback(() => setBlocked(true), [])
-  useStudentRealtime(sessionId, handleBlocked)
+  // Invigilator tools: pause (clock frozen), messages, and "show me your desk".
+  const [pausedAt, setPausedAt] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [deskCheckUntil, setDeskCheckUntil] = useState(0)
+  const lastNoticeSeq = useRef(-1)
+  const startDeskCheck = useCallback(() => { window.dispatchEvent(new Event("proctor:deskcheck")); setDeskCheckUntil(Date.now() + 10_000) }, [])
+  const realtimeHandlers = useMemo(() => ({
+    onMessage: (message: { text: string; seq?: number | null }) => { if (typeof message.seq === "number") lastNoticeSeq.current = Math.max(lastNoticeSeq.current, message.seq); setNotice(message.text) },
+    onPaused: (info: { pausedAt: string }) => setPausedAt(info.pausedAt),
+    onResumed: (info: { serverEndsAt: string }) => { setPausedAt(null); setServerEndsAt(info.serverEndsAt) },
+    onDeskCheck: (info?: { seq?: number | null }) => { if (typeof info?.seq === "number") lastNoticeSeq.current = Math.max(lastNoticeSeq.current, info.seq); startDeskCheck() },
+  }), [startDeskCheck])
+  useStudentRealtime(sessionId, handleBlocked, realtimeHandlers)
 
   // Questions are grouped into contiguous sections (subjects) so Next/Back walk section by section.
   const sections = useMemo<Section[]>(() => {
@@ -107,22 +127,55 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   )
 
   // ---- server sync -------------------------------------------------------
-  // Saves are chained so they reach the server in the order the student made them.
+  // Every change goes into the outbox first, then is sent. If the network drops, nothing is lost: the outbox is retried
+  // every few seconds (and as soon as the browser is back online) until the server accepts it.
+  const flushRef = useRef<() => Promise<void>>(async () => undefined)
+  const flushOutbox = useCallback(async () => {
+    const box = outbox.current
+    if (!sessionId || !box || flushing.current) return
+    flushing.current = true
+    try {
+      for (;;) {
+        const next = box.take()
+        if (!next) break
+        let response: Response | null = null
+        try { response = await fetch(`/api/exams/session/${sessionId}/answer`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId: next.questionId, ...next.patch }) }) } catch { response = null }
+        if (response?.ok) continue
+        // 409 means the session is no longer accepting answers: ended by an invigilator, submitted or out of time.
+        if (response?.status === 409) { box.clear(); setPending(0); setSaveWarning(false); void sessionEndedRef.current(); return }
+        if (response && (response.status === 400 || response.status === 404)) continue // this change can never be accepted: drop it
+        box.restore(next.questionId, next.patch)
+        setSaveWarning(true)
+        setPending(box.size)
+        window.clearTimeout(retryTimer.current)
+        retryTimer.current = window.setTimeout(() => void flushRef.current(), 3000)
+        return
+      }
+      setSaveWarning(false)
+      setPending(0)
+    } finally {
+      flushing.current = false
+    }
+  }, [sessionId])
+  flushRef.current = flushOutbox
+
   const persist = useCallback(
-    (questionId: string, patch: Partial<Pick<Answer, "selectedOption" | "descriptiveText" | "markedForReview">>) => {
+    (questionId: string, patch: AnswerPatch) => {
       if (!sessionId) return
-      saveQueue.current = saveQueue.current.then(() =>
-        fetch(`/api/exams/session/${sessionId}/answer`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId, ...patch }) })
-          .then((response) => {
-            // 409 means the session is no longer accepting answers: ended by an invigilator, submitted or out of time.
-            if (response.status === 409) void sessionEndedRef.current()
-            else setSaveWarning(!response.ok)
-          })
-          .catch(() => setSaveWarning(true)),
-      )
+      if ("selectedOption" in patch) answersChanged.current += 1
+      outbox.current ??= new Outbox(`exam-outbox:${sessionId}`)
+      outbox.current.put(questionId, patch)
+      setPending(outbox.current.size)
+      void flushOutbox()
     },
-    [sessionId],
+    [sessionId, flushOutbox],
   )
+
+  useEffect(() => {
+    const online = () => void flushRef.current()
+    window.addEventListener("online", online)
+    return () => { window.removeEventListener("online", online); window.clearTimeout(retryTimer.current) }
+  }, [])
 
   const updateAnswer = useCallback((questionId: string, patch: Partial<Answer>) => {
     setAnswers((previous) => ({ ...previous, [questionId]: { ...(previous[questionId] ?? blankAnswer(questionId)), ...patch, visited: true } }))
@@ -137,7 +190,8 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
 
   async function loadSession() {
     if (!exam?.id) return
-    const startResponse = await fetch(`/api/exams/${exam.id}/start`, { method: "POST" })
+    const consentVersion = (() => { try { return sessionStorage.getItem("examConsentVersion") } catch { return null } })()
+    const startResponse = await fetch(`/api/exams/${exam.id}/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ consentVersion }) })
     const start = await readJson(startResponse, "Starting the exam")
     if (!startResponse.ok) throw new Error(start.error ?? "Unable to start exam")
     setSessionId(start.sessionId)
@@ -150,10 +204,16 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
     for (const question of questionData.questions as Question[]) if (!sectionOrder.has(question.subject.id)) sectionOrder.set(question.subject.id, sectionOrder.size)
     setQuestions([...(questionData.questions as Question[])].sort((a, b) => sectionOrder.get(a.subject.id)! - sectionOrder.get(b.subject.id)!))
     setServerEndsAt(questionData.serverEndsAt)
+    setPausedAt(questionData.pausedAt ?? null)
     if (questionData.candidate) setCandidate(questionData.candidate)
     const restored: Record<string, Answer> = {}
     for (const answer of answerData.answers ?? []) restored[answer.questionId] = { ...blankAnswer(answer.questionId), ...answer }
+    // Changes that were still unsent when the page closed or the connection dropped are applied on top and sent again.
+    const stored = new Outbox(`exam-outbox:${start.sessionId}`)
+    outbox.current = stored
+    for (const [questionId, patch] of stored.entries()) restored[questionId] = { ...(restored[questionId] ?? blankAnswer(questionId)), ...patch, visited: true }
     setAnswers(restored)
+    if (stored.size) { setPending(stored.size); window.setTimeout(() => void flushRef.current(), 500) }
   }
 
   useEffect(() => {
@@ -185,11 +245,13 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   // ---- timer ---------------------------------------------------------------
   useEffect(() => {
     if (!serverEndsAt) return
-    const sync = () => { setTimeLeft(Math.max(0, Math.floor((new Date(serverEndsAt).getTime() - Date.now()) / 1000))); setClockReady(true) }
+    // While the invigilator has paused the exam the clock is frozen at the moment of the pause.
+    const reference = () => (pausedAt ? new Date(pausedAt).getTime() : Date.now())
+    const sync = () => { setTimeLeft(Math.max(0, Math.floor((new Date(serverEndsAt).getTime() - reference()) / 1000))); setClockReady(true) }
     sync()
     const timer = setInterval(sync, 1000)
     return () => clearInterval(timer)
-  }, [serverEndsAt])
+  }, [serverEndsAt, pausedAt])
 
   // Poll the session every 10s: keeps the clock honest and picks up an invigilator ending the exam even
   // where the realtime socket is unavailable (for example on Vercel).
@@ -200,8 +262,19 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
       if (!response?.ok) return
       const data = await response.json()
       setServerEndsAt(data.serverEndsAt)
+      setPausedAt(data.pausedAt ?? null)
       if (data.status === "BLOCKED") setBlocked(true)
       else if (data.status !== "IN_PROGRESS") void submitRef.current()
+      // Invigilator messages and desk-check requests that the live socket did not deliver.
+      const noticeResponse = await fetch(`/api/exams/session/${sessionId}/notices?after=${Math.max(0, lastNoticeSeq.current)}`).catch(() => null)
+      if (!noticeResponse?.ok) return
+      const noticeData = await noticeResponse.json() as { latestSeq: number; notices: Array<{ seq: number; kind: string; text: string }> }
+      if (lastNoticeSeq.current < 0) { lastNoticeSeq.current = noticeData.latestSeq; return } // first look: skip anything from before this page loaded
+      for (const item of noticeData.notices) {
+        lastNoticeSeq.current = Math.max(lastNoticeSeq.current, item.seq)
+        if (item.kind === "deskcheck") startDeskCheck()
+        else setNotice(item.text)
+      }
     }
     const interval = setInterval(sync, 10000)
     return () => clearInterval(interval)
@@ -213,12 +286,14 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
     submitting.current = true
     setSubmitError("")
     try {
+      await flushRef.current() // send any answers still waiting before grading
       const response = await fetch(`/api/exams/session/${sessionId}/submit`, { method: "POST" })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? "Unable to submit exam")
       const totalQuestions = typeof data.totalQuestions === "number" ? data.totalQuestions : questions.length
       const attempted = typeof data.attempted === "number" ? data.attempted : Object.values(answers).filter((answer) => answer.selectedOption || answer.descriptiveText).length
-      setExamResults({ attempted, skipped: totalQuestions - attempted, unattempted: totalQuestions - attempted, totalQuestions, answers, score: data.score, status: data.status, reason: data.reason, secondsUsed: data.secondsUsed, breakdown: data.breakdown, lockdownCount: data.lockdownCount, maxViolations: data.maxViolations })
+      setExamResults({ sessionId, attempted, skipped: totalQuestions - attempted, unattempted: totalQuestions - attempted, totalQuestions, answers, score: data.score, status: data.status, reason: data.reason, secondsUsed: data.secondsUsed, breakdown: data.breakdown, lockdownCount: data.lockdownCount, maxViolations: data.maxViolations })
+      outbox.current?.clear()
       setFinished(true)
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined)
       onFinishExam()
@@ -242,12 +317,15 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
   sessionEndedRef.current = handleSessionEnded
 
   useEffect(() => {
-    if (!clockReady || timeLeft !== 0 || !sessionId || !serverEndsAt || submitting.current) return
+    if (!clockReady || pausedAt || timeLeft !== 0 || !sessionId || !serverEndsAt || submitting.current) return
     void submitExam()
   }, [clockReady, timeLeft, sessionId, serverEndsAt, submitRetry])
 
   // ---- lockdown ----------------------------------------------------------------
   const lockdown = useExamLockdown({ sessionId, active: started && Boolean(sessionId) && !finished && !blocked, onAutoSubmitted: () => void submitExam() })
+
+  // How answers are given (synthetic events, answers with no input, metronome clicking) is checked every 30 s.
+  useInputBehaviour(sessionId, started && Boolean(sessionId) && !finished && !blocked && !pausedAt, answersChanged)
 
   // ---- actions ------------------------------------------------------------------
   const goTo = (index: number) => setCurrentIndex(Math.min(questions.length - 1, Math.max(0, index)))
@@ -338,6 +416,7 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
     <div className="flex h-screen select-none flex-col bg-gray-100">
       {candidate && <ExamWatermark label={`${candidate.fullName} · ${candidate.email} · ${sessionId.slice(-6).toUpperCase()}`} />}
       <ProctorEngine sessionId={sessionId} retryKey={cameraRetry} onCameraStatus={setCameraOk} />
+      <InvigilatorNotices sessionId={sessionId} pausedAt={pausedAt} notice={notice} deskCheckUntil={deskCheckUntil} onDismiss={() => setNotice(null)} />
 
       {/* Header */}
       <header className="flex items-center justify-between border-b bg-white px-4 py-2 shadow-sm">
@@ -363,7 +442,7 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
         </div>
       )}
       {submitError && <div className="bg-red-100 px-4 py-2 text-sm text-red-800">{submitError}</div>}
-      {saveWarning && <div className="bg-red-100 px-4 py-2 text-sm text-red-800">Your last change could not be saved. Check your internet connection; it will be retried when you make the next change.</div>}
+      {(saveWarning || pending > 0) && <div className="bg-red-100 px-4 py-2 text-sm text-red-800">Connection problem: {pending || 1} answer change{pending > 1 ? "s are" : " is"} waiting to be saved. Keep this window open; it is retried automatically every few seconds and when your internet returns.</div>}
 
       {/* Section tabs */}
       <nav className="flex gap-2 border-b bg-white px-4 py-2">

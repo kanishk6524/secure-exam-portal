@@ -13,6 +13,7 @@ interface Exam {
 }
 
 interface ExamResults {
+  sessionId?: string
   attempted: number
   skipped: number
   unattempted: number

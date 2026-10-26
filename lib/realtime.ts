@@ -9,3 +9,10 @@ export function emitIncident(incident: LiveIncident) {
 export function emitSessionBlocked(sessionId: string) {
   globalThis.realtimeIO?.to(`session:${sessionId}`).emit("session:blocked")
 }
+export function emitToSession(sessionId: string, event: string, payload?: unknown) {
+  globalThis.realtimeIO?.to(`session:${sessionId}`).emit(event, payload)
+}
+
+export function emitToExamAdmins(examId: string, event: string, payload?: unknown) {
+  globalThis.realtimeIO?.to(`exam:${examId}:admin`).emit(event, payload)
+}

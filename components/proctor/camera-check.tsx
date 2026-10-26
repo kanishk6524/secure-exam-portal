@@ -2,14 +2,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import { createFaceLandmarker, describeError } from "@/lib/face-landmarker"
+import { CHALLENGE_TEXT, ChallengeTracker, frameFromResult, pickChallenges, type ChallengeId } from "@/lib/liveness"
 
 type Props = { onReady: () => void }
-const LEFT_EYE = [362, 385, 387, 263, 373, 380]
-const RIGHT_EYE = [33, 160, 158, 133, 153, 144]
-
-function distance(a: { x: number; y: number }, b: { x: number; y: number }) { return Math.hypot(a.x - b.x, a.y - b.y) }
-function ear(points: Array<{ x: number; y: number }>, indexes: number[]) { const [p1, p2, p3, p4, p5, p6] = indexes.map((index) => points[index]); return (distance(p2, p6) + distance(p3, p5)) / (2 * distance(p1, p4)) }
-
 export default function CameraCheck({ onReady }: Props) {
   const [attempt, setAttempt] = useState(0)
   const [modelFailed, setModelFailed] = useState(false)
@@ -17,15 +12,13 @@ export default function CameraCheck({ onReady }: Props) {
   const streamRef = useRef<MediaStream | undefined>(undefined)
   const [status, setStatus] = useState("Requesting camera and microphone access...")
   const [error, setError] = useState("")
-  const [blink, setBlink] = useState(false)
-  const [turnedLeft, setTurnedLeft] = useState(false)
-  const [turnedRight, setTurnedRight] = useState(false)
+  // Random challenge: the actions and their order change every attempt, so a recording or photo cannot be prepared.
+  const [challenges, setChallenges] = useState<ChallengeId[]>([])
+  const [stepsDone, setStepsDone] = useState(0)
+  const [liveOk, setLiveOk] = useState(false)
   // Identity gate: a photo is taken after liveness and compared with the registration photo. It then stays the reference for the exam.
   const [identity, setIdentity] = useState<"idle" | "checking" | "ok" | "skipped" | "mismatch">("idle")
   const [identityNote, setIdentityNote] = useState("")
-  const blinkRef = useRef(false)
-  const leftRef = useRef(false)
-  const rightRef = useRef(false)
 
   async function verifyFace() {
     setIdentity("checking")
@@ -75,26 +68,19 @@ export default function CameraCheck({ onReady }: Props) {
         streamRef.current = stream
         if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play() }
         setStatus("Loading liveness model...")
-        const landmarker = detector = await createFaceLandmarker({ numFaces: 1, blendshapes: false })
-        setStatus("Blink once, then turn your head slightly left and right")
-        const started = Date.now()
-        let wasClosed = false
+        const landmarker = detector = await createFaceLandmarker({ numFaces: 1, blendshapes: true })
+        let tracker = new ChallengeTracker(pickChallenges())
+        setChallenges(tracker.challenges); setStepsDone(0); setLiveOk(false)
+        setStatus("Do the actions below, in order. They are different every time")
         timer = window.setInterval(() => {
           if (cancelled || !videoRef.current) return
-          const result = landmarker.detectForVideo(videoRef.current, performance.now())
-          const points = result.faceLandmarks[0]
-          if (!points) return
-          const currentEar = (ear(points, LEFT_EYE) + ear(points, RIGHT_EYE)) / 2
-          if (currentEar < 0.2) wasClosed = true
-          if (wasClosed && currentEar > 0.24) { blinkRef.current = true; setBlink(true); wasClosed = false }
-          const matrix = result.facialTransformationMatrixes?.[0]?.data
-          if (matrix) {
-            const yaw = Math.atan2(matrix[2], matrix[10]) * 180 / Math.PI
-            if (yaw < -10) { leftRef.current = true; setTurnedLeft(true) }
-            if (yaw > 10) { rightRef.current = true; setTurnedRight(true) }
-          }
-          if (Date.now() - started > 3000 && blinkRef.current && leftRef.current && rightRef.current) { window.clearInterval(timer); timer = undefined; setStatus("Liveness verified."); void verifyFace() }
-        }, 500)
+          const frame = frameFromResult(landmarker.detectForVideo(videoRef.current, performance.now()), performance.now())
+          if (!frame) return
+          tracker.update(frame)
+          setStepsDone(tracker.completed)
+          if (tracker.failed) { tracker = new ChallengeTracker(pickChallenges()); setChallenges(tracker.challenges); setStepsDone(0); setStatus("Too slow. Here are new actions: do each one within 8 seconds"); return }
+          if (tracker.done) { window.clearInterval(timer); timer = undefined; setLiveOk(true); setStatus("Liveness verified."); void verifyFace() }
+        }, 100)
       } catch (cameraError) {
         if (cancelled) return
         const detail = describeError(cameraError)
@@ -113,6 +99,6 @@ export default function CameraCheck({ onReady }: Props) {
     return () => { cancelled = true; if (timer) window.clearInterval(timer); detector?.close(); streamRef.current?.getTracks().forEach((track) => track.stop()) }
   }, [attempt])
 
-  const ready = blink && turnedLeft && turnedRight && (identity === "ok" || identity === "skipped")
-  return <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6"><div className="w-full max-w-2xl rounded-lg bg-white p-8 shadow-md"><h1 className="text-2xl font-bold">Camera and liveness check</h1><p className="mt-2 text-gray-600">Your camera and microphone stay on during the exam. Video is processed in this browser and is never uploaded.</p><video ref={videoRef} muted playsInline className="mx-auto mt-6 aspect-video w-full max-w-lg rounded-lg bg-gray-900 object-cover" />{error && <p className="mt-4 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}.</p>}{error && <div className="mt-3 flex gap-2"><button onClick={() => setAttempt((n) => n + 1)} className="rounded-md border px-3 py-2 text-sm">Try again</button>{modelFailed && process.env.NODE_ENV !== "production" && <button onClick={onReady} className="rounded-md border border-amber-500 px-3 py-2 text-sm text-amber-700">Skip liveness (development only)</button>}</div>}<p className="mt-4 text-center text-sm text-gray-700">{status}</p>{identityNote && <p className={`mt-2 rounded-md p-2 text-center text-sm ${identity === "mismatch" ? "bg-red-100 text-red-700" : identity === "checking" ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>{identityNote}</p>}{identity === "mismatch" && <div className="mt-2 text-center"><button onClick={() => void verifyFace()} className="rounded-md border px-3 py-2 text-sm">Check my face again</button></div>}<div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm"><span className={blink ? "text-green-700" : "text-gray-400"}>Blink {blink ? "verified" : "pending"}</span><span className={turnedLeft ? "text-green-700" : "text-gray-400"}>Left turn {turnedLeft ? "verified" : "pending"}</span><span className={turnedRight ? "text-green-700" : "text-gray-400"}>Right turn {turnedRight ? "verified" : "pending"}</span></div><button disabled={!ready} onClick={onReady} className={`mt-6 w-full rounded-md px-4 py-2 text-white ${ready ? "bg-green-600 hover:bg-green-700" : "cursor-not-allowed bg-gray-400"}`}>Start exam</button></div></div>
+  const ready = liveOk && (identity === "ok" || identity === "skipped")
+  return <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6"><div className="w-full max-w-2xl rounded-lg bg-white p-8 shadow-md"><h1 className="text-2xl font-bold">Camera and liveness check</h1><p className="mt-2 text-gray-600">Your camera and microphone stay on during the exam. Video is processed in this browser and is never uploaded.</p><video ref={videoRef} muted playsInline className="mx-auto mt-6 aspect-video w-full max-w-lg rounded-lg bg-gray-900 object-cover" />{error && <p className="mt-4 rounded-md bg-red-100 p-3 text-sm text-red-700">{error}.</p>}{error && <div className="mt-3 flex gap-2"><button onClick={() => setAttempt((n) => n + 1)} className="rounded-md border px-3 py-2 text-sm">Try again</button>{modelFailed && process.env.NODE_ENV !== "production" && <button onClick={onReady} className="rounded-md border border-amber-500 px-3 py-2 text-sm text-amber-700">Skip liveness (development only)</button>}</div>}<p className="mt-4 text-center text-sm text-gray-700">{status}</p>{identityNote && <p className={`mt-2 rounded-md p-2 text-center text-sm ${identity === "mismatch" ? "bg-red-100 text-red-700" : identity === "checking" ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>{identityNote}</p>}{identity === "mismatch" && <div className="mt-2 text-center"><button onClick={() => void verifyFace()} className="rounded-md border px-3 py-2 text-sm">Check my face again</button></div>}<ol className="mt-4 space-y-1 text-center text-sm">{challenges.map((id, index) => <li key={`${id}-${index}`} className={index < stepsDone ? "text-green-700" : index === stepsDone && !liveOk ? "font-semibold text-blue-700" : "text-gray-400"}>{index + 1}. {CHALLENGE_TEXT[id]} {index < stepsDone ? "(done)" : index === stepsDone && !liveOk ? "<- now" : ""}</li>)}</ol><button disabled={!ready} onClick={onReady} className={`mt-6 w-full rounded-md px-4 py-2 text-white ${ready ? "bg-green-600 hover:bg-green-700" : "cursor-not-allowed bg-gray-400"}`}>Start exam</button></div></div>
 }

@@ -24,6 +24,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ses
   const type = String(body.type ?? "") as IncidentType
   const severity = String(body.severity ?? "MEDIUM") as Severity
   if (!Object.values(IncidentType).includes(type)) return NextResponse.json({ error: "Invalid incident type" }, { status: 400 })
+  // While the invigilator has paused the exam, browser-lockdown events (leaving fullscreen etc.) are not counted against the candidate.
+  if (examSession.pausedAt && LOCKDOWN_TYPES.includes(type)) return NextResponse.json({ ignored: true, reason: "paused" }, { status: 202 })
   if (!Object.values(Severity).includes(severity)) return NextResponse.json({ error: "Invalid severity" }, { status: 400 })
   if (JSON.stringify(body.metadata ?? null).length > 2000) return NextResponse.json({ error: "Incident metadata is too large" }, { status: 400 })
   // A browser reporting dozens of incidents per second is broken or malicious: stop writing to the database.
@@ -35,7 +37,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ses
     if (stored < MAX_SNAPSHOTS_PER_SESSION) evidence = body.snapshot
   }
   const incident = await prisma.incident.create({ data: { sessionId, type, severity, confidence: typeof body.confidence === "number" ? body.confidence : null, metadata: body.metadata ?? undefined, evidence } })
-  await prisma.examSession.update({ where: { id: sessionId }, data: { riskScore: { increment: RISK_WEIGHT[severity] } } })
+  await prisma.examSession.update({ where: { id: sessionId }, data: { riskScore: { increment: type === "DESK_CHECK" ? 0 : RISK_WEIGHT[severity] } } })
   // The live feed carries a flag, not the image; the review page loads the picture on demand.
   const { evidence: storedEvidence, ...liveIncident } = incident
   emitIncident({ ...liveIncident, hasEvidence: Boolean(storedEvidence), examId: examSession.examId })

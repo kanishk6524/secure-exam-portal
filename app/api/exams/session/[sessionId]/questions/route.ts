@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { seededShuffle } from "@/lib/exam-engine"
+import { resolveQuestion } from "@/lib/question-variants"
 import { requireSecureClient } from "@/lib/secure-client"
 
 export async function GET(request: Request, { params }: { params: Promise<{ sessionId: string }> }) {
@@ -17,7 +18,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ sess
   const questionMap = new Map(questions.map((question) => [question.id, question]))
   // Every student sees the options in their own order (stable for the session), so a neighbour's
   // "answer is the 2nd option" is useless. Option ids never change, so grading is unaffected.
-  const shuffleOptions = (question: { id: string; options: unknown }) => (Array.isArray(question.options) ? seededShuffle(question.options as Array<{ id: string; text: string }>, `${sessionId}:${question.id}`) : [])
+  const shuffleOptions = (options: Array<{ id: string; text: string }>, questionId: string) => seededShuffle(options, `${sessionId}:${questionId}`)
   const candidate = await prisma.user.findUnique({ where: { id: session.user.id }, select: { fullName: true, email: true } })
-  return NextResponse.json({ candidate, serverEndsAt: examSession.serverEndsAt.toISOString(), status: examSession.status, questions: ids.map((id) => questionMap.get(id)).filter(Boolean).map((question) => ({ id: question!.id, subject: question!.subject, text: question!.text, options: shuffleOptions(question!), marks: question!.marks, negativeMarks: question!.negativeMarks })) })
+  return NextResponse.json({ candidate, serverEndsAt: examSession.serverEndsAt.toISOString(), pausedAt: examSession.pausedAt?.toISOString() ?? null, status: examSession.status, questions: ids.map((id) => questionMap.get(id)).filter(Boolean).map((question) => { const resolved = resolveQuestion(question!, sessionId); return { id: question!.id, subject: question!.subject, text: resolved.text, options: shuffleOptions(resolved.options, question!.id), marks: question!.marks, negativeMarks: question!.negativeMarks } }) })
 }

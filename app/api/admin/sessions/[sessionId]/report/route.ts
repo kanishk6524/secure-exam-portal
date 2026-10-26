@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { getAdminScope } from "@/lib/admin-auth"
 import { assessIntegrity } from "@/lib/integrity-model"
+import { analyseAnswerPatterns } from "@/lib/answer-patterns"
 
 const esc = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string)
 
@@ -16,6 +17,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ses
   if (!session) return new Response("Session not found", { status: 404 })
 
   const assessment = assessIntegrity({ startedAt: session.startedAt, incidents: session.incidents, answers: session.answers })
+  const patterns = analyseAnswerPatterns({ startedAt: session.startedAt, endedAt: session.submittedAt, answers: session.answers })
   const byType = new Map<string, number>()
   for (const incident of session.incidents) byType.set(incident.type, (byType.get(incident.type) ?? 0) + 1)
   const evidence = session.incidents.filter((incident) => incident.evidence && incident.evidence.startsWith("data:image/jpeg;base64,")).slice(0, 6)
@@ -45,6 +47,9 @@ table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid 
 <p><span class="badge" style="background:${levelColour}">${esc(assessment.level)}</span> estimated likelihood of cheating: <b>${Math.round(assessment.probability * 100)}%</b> · rule-based risk points: ${esc(session.riskScore)}</p>
 ${assessment.factors.length ? `<table>${assessment.factors.map((factor) => `<tr><td>${esc(factor.label)}</td><td style="width:200px"><span class="bar" style="width:${Math.min(180, Math.round(factor.contribution * 45))}px"></span></td><td>+${factor.contribution.toFixed(2)}</td></tr>`).join("")}</table>` : "<p>No behaviour contributed to the score.</p>"}
 <p class="muted">${assessment.trained ? `The model was fitted to ${assessment.samples} reviewed sessions.` : "The model uses starting weights, not weights learned from this institution's data."} The score supports a human reviewer and is not a verdict.</p>
+<h2>Answer pattern analysis</h2>
+${patterns.length ? `<table>${patterns.map((finding) => `<tr><td style="width:90px"><b>${esc(finding.severity)}</b></td><td>${esc(finding.text)}</td></tr>`).join("")}</table>` : "<p>No unusual answering pattern was found (or there were too few answers to judge).</p>"}
+<p class="muted">Based on the last save time of each answer; changed answers appear as later answers.</p>
 <h2>Incident summary</h2>
 ${byType.size ? `<table><tr><th>Type</th><th>Count</th></tr>${[...byType.entries()].sort((a, b) => b[1] - a[1]).map(([type, count]) => `<tr><td>${esc(type.replaceAll("_", " "))}</td><td>${count}</td></tr>`).join("")}</table>` : "<p>No incidents were recorded.</p>"}
 <h2>Timeline</h2>
