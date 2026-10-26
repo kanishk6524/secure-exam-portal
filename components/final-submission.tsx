@@ -54,6 +54,20 @@ export default function FinalSubmission({ onGoHome }: FinalSubmissionProps) {
           </div>
         </div>
 
+        {examResults?.reason && (
+          <div className="p-4 mb-6 text-sm border rounded-md border-slate-300 bg-slate-50 text-slate-800">
+            <p className="font-semibold">
+              {examResults.reason === "MANUAL" && `Submitted by you after ${examResults.secondsUsed ?? 0} seconds.`}
+              {examResults.reason === "TIME_UP" && `Submitted automatically because the timer ran out (${examResults.secondsUsed ?? 0} seconds used).`}
+              {examResults.reason === "VIOLATION_LIMIT" && `Submitted automatically because the violation limit was reached (${examResults.lockdownCount} of ${examResults.maxViolations} allowed) after ${examResults.secondsUsed ?? 0} seconds.`}
+              {examResults.reason === "INVIGILATOR" && "The invigilator ended this session."}
+            </p>
+            {examResults.breakdown && Object.keys(examResults.breakdown).length > 0 && (
+              <p className="mt-1 text-xs text-slate-600">Alerts recorded: {Object.entries(examResults.breakdown).map(([type, count]) => `${type.replaceAll("_", " ").toLowerCase()} x${count}`).join(", ")}</p>
+            )}
+          </div>
+        )}
+
         <div className="p-4 mb-6 text-center border border-green-300 rounded-md bg-green-50">
           <p className="text-green-800">
             Your exam has been successfully submitted. You will receive your results via email.

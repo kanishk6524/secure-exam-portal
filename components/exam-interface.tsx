@@ -198,7 +198,7 @@ export default function ExamInterface({ onFinishExam, onExit }: { onFinishExam: 
       if (!response.ok) throw new Error(data.error ?? "Unable to submit exam")
       const totalQuestions = typeof data.totalQuestions === "number" ? data.totalQuestions : questions.length
       const attempted = typeof data.attempted === "number" ? data.attempted : Object.values(answers).filter((answer) => answer.selectedOption || answer.descriptiveText).length
-      setExamResults({ attempted, skipped: totalQuestions - attempted, unattempted: totalQuestions - attempted, totalQuestions, answers, score: data.score, status: data.status })
+      setExamResults({ attempted, skipped: totalQuestions - attempted, unattempted: totalQuestions - attempted, totalQuestions, answers, score: data.score, status: data.status, reason: data.reason, secondsUsed: data.secondsUsed, breakdown: data.breakdown, lockdownCount: data.lockdownCount, maxViolations: data.maxViolations })
       setFinished(true)
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined)
       onFinishExam()

@@ -20,6 +20,11 @@ interface ExamResults {
   answers: Record<number, any>
   score?: number | null
   status?: string
+  reason?: "MANUAL" | "TIME_UP" | "VIOLATION_LIMIT" | "INVIGILATOR"
+  secondsUsed?: number
+  breakdown?: Record<string, number>
+  lockdownCount?: number
+  maxViolations?: number
 }
 
 interface ExamContextType {
